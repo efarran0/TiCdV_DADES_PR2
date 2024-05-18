@@ -107,57 +107,66 @@ for(i in colnames(top250movies)){
 
 ```{r}
 # Duration en minuts
-for(i in top250movies$Duration){
-  value <- str_split(string = i,
+top250movies.duration_conversion <- function(duration){
+  value <- str_split(string = duration,
                      pattern = ' ')[[1]]
   if(is.na(value[2])){
     if(grepl(pattern = 'h',
              x = value[1])){
-      hours <- str_remove_all(string = value[1],
-                              pattern = '[a-z]')
+      hours <- as.numeric(str_remove_all(string = value[1],
+                                         pattern = '[a-z]'))
       minutes <- 0
       }else{
         hours <- 0
-        minutes <- str_remove_all(string = value[1],
-                                  pattern = '[a-z]')
+        minutes <- as.numeric(str_remove_all(string = value[1],
+                                         pattern = '[a-z]'))
     }
     }else{
-      hours <- str_remove_all(string = value[1],
-                              pattern = '[a-z]')
-      minutes <- str_remove_all(string = value[2],
-                                pattern = '[a-z]')
-      }
-  top250movies$Duration[top250movies$Duration == i] <- as.numeric(hours)*60 + as.numeric(minutes)
+      hours <- as.numeric(str_remove_all(string = value[1],
+                                         pattern = '[a-z]'))
+      minutes <- as.numeric(str_remove_all(string = value[2],
+                                         pattern = '[a-z]'))
+    }
+  time <- hours*60 + minutes
+  return(time)
+}
+
+for(duration in top250movies$Duration){
+  top250movies$Duration[top250movies$Duration == duration] <- top250movies.duration_conversion(duration)
 }
 
 # Review en unitats
-for(i in top250movies$Review){
+top250movies.review_conversion <- function(review){
   if(grepl(pattern = 'K',
-           x = i)){
-    result <- paste(str_remove_all(string = i,
-                                   pattern = '[^0-9]'),
-                    '000',
-                    sep = '')}else{
-                      if(grepl(pattern = '\\.',
-                               x = i)){
-                        result <- paste(str_remove_all(string = i,
-                                                       pattern = '[^0-9]'),
-                                        '00000',
-                                        sep = '')}else{
-                                          result <- paste(str_remove_all(string = i,
-                                                                         pattern = '[^0-9]'),
-                                                          '000000',
-                                                          sep = '')}
-                      }
-  top250movies$Review[top250movies$Review == i] <- result
+           x = review)){
+    units <- paste(str_remove_all(string = review,
+                                  pattern = '[^0-9]'),
+                   '000',
+                   sep = '')}else{
+                     if(grepl(pattern = '\\.',
+                              x = review)){
+                       units <- paste(str_remove_all(string = review,
+                                                     pattern = '[^0-9]'),
+                                      '00000',
+                                      sep = '')}else{
+                                        units <- paste(str_remove_all(string = review,
+                                                                      pattern = '[^0-9]'),
+                                                       '000000',
+                                                       sep = '')}
+                    }
+  return(units)
+}
+
+for(review in top250movies$Review){
+  top250movies$Review[top250movies$Review == review] <- top250movies.review_conversion(review)
 }
   
 # Budget en dòlars
-Monetary_conversion_policy <- data.frame('Local' = c('R',
+Monetary_conversion_policy <- data.frame('Local' = c('R$',
                                                      'FRF',
                                                      'DKK',
                                                      'DEM',
-                                                     'A',
+                                                     'A$',
                                                      '₹',
                                                      '€',
                                                      '₩',
@@ -176,17 +185,28 @@ Monetary_conversion_policy <- data.frame('Local' = c('R',
                                                      1.26,
                                                      1))
 
-top250movies.dollar_conversion <- function(local){
-  return(Monetary_conversion_policy$Dolar[Monetary_conversion_policy$Local == local])}
-
-for(i in Monetary_conversion_policy$Local)
-for(j in top250movies$Budget[grepl(pattern = paste('\\b',
-                                                   i,
-                                                   sep = ''),
-                                   x = top250movies$Budget)]){
-    top250movies$Budget[top250movies$Budget == j] <- as.numeric(str_remove_all(string = j,
-                                                                               pattern = '[^0-9]'))*top250movies.dollar_conversion(local = i)
+top250movies.dollar_conversion <- function(monetary_units){
+  if(is.na(monetary_units)){
+    conversion <- NA
+  }else{
+  conversion_value <- subset(Monetary_conversion_policy,
+                             subset = Local == str_replace_all(string = monetary_units,
+                                                               pattern = '[0-9]|\\,|\\s',
+                                                               replacement = ''),
+                             select = Dolar,
+                             drop = TRUE)
+  
+  value <- as.numeric(str_replace_all(string = monetary_units,
+                                      pattern = '[^0-9]',
+                                      replacement = ''))
+  conversion <- value*conversion_value
   }
+  
+  return(conversion)}
+
+for(monetary_units in top250movies$Budget){
+    top250movies$Budget[top250movies$Budget == monetary_units] <- top250movies.dollar_conversion(monetary_units)
+}
 ```
 
 ## Canvi de tipus de dades
@@ -203,10 +223,8 @@ for(i in c('Year', 'Duration', 'Review', 'Budget', 'Collection')){
 top250movies$Rating <- as.numeric(top250movies$Rating)
 
 # Variables de caràcter factor
-for(i in colnames(top250movies)){
-  if((i %in% c('Classification', 'Director'))){
+for(i in c('Classification', 'Director')){
   top250movies[[i]] <- as.factor(top250movies[[i]])
-  }
 }
 ```
 
