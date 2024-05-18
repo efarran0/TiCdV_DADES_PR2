@@ -142,18 +142,20 @@ top250movies.review_conversion <- function(review){
     units <- paste(str_remove_all(string = review,
                                   pattern = '[^0-9]'),
                    '000',
-                   sep = '')}else{
-                     if(grepl(pattern = '\\.',
-                              x = review)){
-                       units <- paste(str_remove_all(string = review,
-                                                     pattern = '[^0-9]'),
-                                      '00000',
-                                      sep = '')}else{
-                                        units <- paste(str_remove_all(string = review,
-                                                                      pattern = '[^0-9]'),
-                                                       '000000',
-                                                       sep = '')}
-                    }
+                   sep = '')
+    }else{
+      if(grepl(pattern = '\\.',
+               x = review)){
+        units <- paste(str_remove_all(string = review,
+                                      pattern = '[^0-9]'),
+                       '00000',
+                       sep = '')
+        }else{
+          units <- paste(str_remove_all(string = review,
+                                        pattern = '[^0-9]'),
+                         '000000',
+                         sep = '')}
+    }
   return(units)
 }
 
@@ -201,7 +203,6 @@ top250movies.dollar_conversion <- function(monetary_units){
                                       replacement = ''))
   conversion <- value*conversion_value
   }
-  
   return(conversion)}
 
 for(monetary_units in top250movies$Budget){
