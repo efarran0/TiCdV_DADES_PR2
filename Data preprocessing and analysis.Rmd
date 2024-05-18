@@ -197,13 +197,13 @@ top250movies.dollar_conversion <- function(monetary_units){
                                                                replacement = ''),
                              select = Dolar,
                              drop = TRUE)
-  
   value <- as.numeric(str_replace_all(string = monetary_units,
                                       pattern = '[^0-9]',
                                       replacement = ''))
   conversion <- value*conversion_value
   }
-  return(conversion)}
+  return(conversion)
+  }
 
 for(monetary_units in top250movies$Budget){
     top250movies$Budget[top250movies$Budget == monetary_units] <- top250movies.dollar_conversion(monetary_units)
