@@ -189,25 +189,7 @@ for(j in top250movies$Budget[grepl(pattern = paste('\\b',
   }
 ```
 
-## Transformacions dicotòmiques
-
-```{r}
-# Genre
-genre_list <- unique(str_trim(unlist(strsplit(top250movies$Genre,
-                                             split = ','))))
-genre_list <- genre_list[!is.na(genre_list)]
-
-for(i in genre_list){
-  top250movies[[paste('Is_',
-                   i,
-                   sep = '')]] <-
-    unlist(lapply(top250movies$Genre,
-                  function(x){grepl(pattern = i,
-                                    x = x)}))
-}
-```
-
-## Naturalesa de les característqiues
+## Canvi de tipus de dades
 
 Es modifica la naturalesa dels atributs de la data.
 
@@ -225,6 +207,24 @@ for(i in colnames(top250movies)){
   if((i %in% c('Classification', 'Director'))){
   top250movies[[i]] <- as.factor(top250movies[[i]])
   }
+}
+```
+
+## Transformacions dicotòmiques
+
+```{r}
+# Genre
+genre_list <- unique(str_trim(unlist(strsplit(top250movies$Genre,
+                                             split = ','))))
+genre_list <- genre_list[!is.na(genre_list)]
+
+for(i in genre_list){
+  top250movies[[paste('Is_',
+                   i,
+                   sep = '')]] <-
+    unlist(lapply(top250movies$Genre,
+                  function(x){grepl(pattern = i,
+                                    x = x)}))
 }
 ```
 
