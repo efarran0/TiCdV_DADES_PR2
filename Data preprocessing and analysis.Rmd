@@ -166,6 +166,7 @@ if(!require(VIM)){
 # Normalització min-max
   top250movies.minmax_norm <- function(column){
     result <- (column - min(column))/(max(column) - min(column))
+    return(result)
   }
 ```
 
