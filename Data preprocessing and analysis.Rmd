@@ -23,8 +23,15 @@ options(scipen = 999)
 
 ```{r}
 # Es carreguen les llibreries requerides
-library(stringr)
-library(VIM)
+  if(!require(stringr)){
+    install.packages('stringr')
+  }
+  library(stringr)
+
+if(!require(VIM)){
+    install.packages('VIM')
+  }
+  library(VIM)
 ```
 
 \newpage
@@ -44,8 +51,9 @@ library(VIM)
 # Eliminació del patró de la columna especificada
   top250movies.remove <- function(column,
                                   pattern){
-    return(str_remove(string = top250movies[[column]],
-                      pattern = pattern))
+    result <- str_remove_all(string = top250movies[[column]],
+                             pattern = pattern)
+    return(result)
   }
 
 # Conversió de la duració a minuts
@@ -121,21 +129,43 @@ library(VIM)
     value <- subset(x = top250movies,
                     select = column,
                     drop = TRUE)
-    return(cat(column,
+    result <- cat(column,
                ': ',
                round(x = sum(is.na(value))/length(value),
-                     digits = 2)*100,
+                     digits = 3)*100,
                '%',
                '\n',
-               sep = ''))
+               sep = '')
+    return(result)
+  }
+  
+# Detecció de valors
+  top250movies.detect <- function(value,
+                                  pattern){
+    if(is.na(value)){
+      result <- NA
+    }else{
+      result <- grepl(pattern = pattern,
+                      x = value)
+    }
+    return(result)
   }
 
-# Valoració de valors positius
-  top250movies.is_positive <- function(column){
-    value <- subset(x = top250movies,
-                    select = column,
-                    drop = TRUE)
-    return(value > 0)
+# Valoració de la pel·lícula en termes de rendibilitat
+  top250movies.is_profitable <- function(minimum_criteria){
+    budget <- subset(x = top250movies,
+                     select = Budget,
+                     drop = TRUE)
+    collection <- subset(x = top250movies,
+                         select = Collection,
+                        drop = TRUE)
+    result <- collection-minimum_criteria*budget > 0
+    return(result)
+  }
+  
+# Normalització min-max
+  top250movies.minmax_norm <- function(column){
+    result <- (column - min(column))/(max(column) - min(column))
   }
 ```
 
@@ -143,12 +173,12 @@ library(VIM)
 
 ```{r}
 # Title
-  top250movies$Title <- top250movies.extraction(column = 'Title',
-                                                pattern = 'Original title:')
+  top250movies$Title <- top250movies.remove(column = 'Title',
+                                            pattern = 'Original title:')
 
 # Budget
-  top250movies$Budget <- top250movies.extraction(column = 'Budget',
-                                                 pattern = '\\(estimated\\)')
+  top250movies$Budget <- top250movies.remove(column = 'Budget',
+                                             pattern = '\\(estimated\\)')
 ```
 
 ## Estandardització
@@ -192,30 +222,28 @@ S'observen els valors que pren la característica 'Classification'.
                                         exclude = 'Not Rated')
 
 # Collection
-  top250movies$Collection <- str_remove_all(string = top250movies$Collection,
-                                            pattern = '[^0-9]')
+  top250movies$Collection <- top250movies.remove(column = 'Collection',
+                                                 pattern = '[^0-9]')
 
 # Gestió d'espais
-  for(i in colnames(top250movies)){
-    top250movies[[i]] <- str_trim(string = top250movies[[i]],
-                                  side = 'both')
-  }
+  top250movies <- as.data.frame(apply(X = top250movies,
+                                      MARGIN = c(1,2),
+                                      FUN = str_trim,
+                                      side = 'both'))
 ```
 
 ## Conversió
 
 ```{r}
 # Duration
-  for(duration in top250movies$Duration){
-    top250movies$Duration[top250movies$Duration == duration] <-
-      top250movies.duration_conversion(duration)
-  }
+  top250movies$Duration <- mapply(FUN = top250movies.duration_conversion,
+                                  duration = top250movies$Duration,
+                                  USE.NAMES = FALSE)
 
 # Review
-  for(review in top250movies$Review){
-    top250movies$Review[top250movies$Review == review] <-
-      top250movies.review_conversion(review)
-  }
+  top250movies$Review <- mapply(FUN = top250movies.review_conversion,
+                                review = top250movies$Review,
+                                USE.NAMES = FALSE)
   
 # Budget
   # Es defineix la política de conversió
@@ -242,10 +270,9 @@ S'observen els valors que pren la característica 'Classification'.
                                                        1.26,
                                                        1))
   
-  for(monetary_units in top250movies$Budget){
-      top250movies$Budget[top250movies$Budget == monetary_units] <-
-        top250movies.dollar_conversion(monetary_units)
-  }
+  top250movies$Budget <- mapply(FUN = top250movies.dollar_conversion,
+                                monetary_units = top250movies$Budget,
+                                USE.NAMES = FALSE)
 ```
 
 ## Canvi de tipus de dades
@@ -279,9 +306,10 @@ Es modifica la naturalesa dels atributs de la data.
     top250movies[[paste('Is_',
                      i,
                      sep = '')]] <-
-      unlist(lapply(top250movies$Genre,
-                    function(x){grepl(pattern = i,
-                                      x = x)}))
+      mapply(FUN = top250movies.detect,
+             value = top250movies$Genre,
+             pattern = i,
+             USE.NAMES = FALSE)
   }
 ```
 
@@ -352,5 +380,19 @@ S'adverteix que la proporció de valors perduts no supera en cap cas el 19%. Per
   top250movies$Net_income <- top250movies$Collection - top250movies$Budget
 
 # Es comprova si la pel·lícula és rendible
-  top250movies$Profitable <- top250movies.is_positive('Net_income')
+  top250movies$Profitable <- top250movies.is_profitable(2)
 ```
+
+## Normalització min-max d'atrbiuts numèrics
+
+Es normalitzen els valors de les característiques numèriques en top250movies d'acord al criteri min-max.
+
+```{r}
+for(i in colnames(top250movies)){
+  if(class(top250movies[[i]]) %in% c('numeric', 'integer') &
+     i != 'Year'){
+    top250movies[[i]] <- top250movies.minmax_norm(top250movies[[i]])
+  }
+}
+```
+
