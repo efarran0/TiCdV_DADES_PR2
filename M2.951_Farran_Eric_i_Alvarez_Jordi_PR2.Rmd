@@ -1,0 +1,573 @@
+---
+title: 'M2.951 Tipologia i cicle de vida de les dades: PRA2'
+author: "Autor: Eric Farran- Jordi Alvarez"
+date: "2024.1"
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 2
+    includes:
+      in_header: header.html
+  word_document: default
+  pdf_document:
+    highlight: zenburn
+    toc: yes
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+options(scipen = 999)
+```
+
+
+```{r}
+
+if (!require('stringr')) install.packages('stringr'); library('stringr')
+if (!require('VIM')) install.packages('VIM'); library('VIM')
+if (!require('readr')) install.packages('readr'); library('readr')
+if (!require('dplyr')) install.packages('dplyr'); library('dplyr')
+
+```
+
+\newpage
+
+
+
+
+******
+# Descripció del dataset. Perquè és important i quina pregunta/problema pretén respondre?
+******
+*Resumeix breument les variables que el formen i el seu tamany.*
+
+
+**RESPOSTA JORDI:** El conjunt de dades top250movies presenta una estructura de 250 observacions i 10 característiques, i classifica les 250 pel·lícules més ben valorades pels usuaris/àries d'una de les bases de dades cinematogràfiques més potents actualment com és la d’*Internet Movie Database* coneguda popularment com IMDb. Aquesta extracció, actualitzada l'11 d'abril del 2024, es va obtenir aplicant tècniques de web scraping de forma responsable i ètica, respectant les condicions de servei d’IMDb i sense sobrecarregar els seus servidors.
+
+
+Es vol analitzar si, amb els atributs disponibles al dataset, es pot establir relacions entre les valoracions que fixem com a variable de classe, i el gènere de la pel·licula, el director/a, o el pressupost destinat a la seva producció. Addicionalment, es pretén determinar si aquesta valoració comporta una major rendibilitat.
+
+
+Mostrem a continuació un resum de les variables del dataset, i una mostra del seu continugut, indicant el tipus de dada segons R:
+
+
+```{r}
+# Importació dataset
+top250movies <- read.csv('top250movies.csv')
+summary(top250movies)
+glimpse(top250movies)
+```
+
+Breu descripció dels atributs:
+
++ **Title**: Títol original
++ **Genre**: Conjunt de gèneres
++ **Year**: Any de llançament
++ **Classification**: Classificació en diferents format
++ **Duration**: Durada en hores i minuts
++ **Rating**: Qualificació promig
++ **Review**: Número de ressenyes
++ **Director**: Director o directora
++ **Budget**: Pressupost en moneda local
++ **Collection**: Ingressos de taquillatge totals
+
+
+
+
+******
+# Integració i selecció de les dades d’interès a analitzar
+******
+
+*Pot ser el resultat adicionar diferents datasets o una subselecció útil de les dades originals, en base a l’objectiu que es vulgui aconseguir. Si es decideix treballar amb una selecció de les dades, és molt important que aquesta estigui degudament justificada. A més, es recomana mostrar un resum de les dades que permeti veure a simple vista les diferents variables i els seus rangs de valors.*
+
+**RESPOSTA JORDI:** Atès que només hi ha disponible una font de dades, per aquest projecte no cal la integració de diferents datasets. Respecte la selecció de característiques de les pel·lícules, la informació de l'any de publicació no es d'interès per a les preguntes a les que es pretén donar resposta.
+
+```{r}
+#top250moviesExt<-top250movies[,-1]
+#top250movies<-top250movies[,c(1:2,4:10)]
+#tail(top250movies)
+
+```
+
+
+******
+# Neteja de les dades.
+******
+
+**RESPOSTA JORDI:** Abans d'iniciar el procés de correcció o eliminació de mostres errònies del dataset, comencem depurant algunes variables que contenen informació no pertinent com per exemple el text *"Original title: "* a la variable **Title**, o el text *"(estimated)"* a la variable **Budget**:
+
+```{r}
+# Neteja
+## Extracció de caràcters superflus
+top250movies.extraction <- function(column,
+                                    pattern){
+  return(str_remove(string = top250movies[[column]],
+                    pattern = pattern))
+}
+
+top250movies$Title <- top250movies.extraction(column = 'Title',
+                                              pattern = 'Original title:')
+
+top250movies$Budget <- top250movies.extraction(column = 'Budget',
+                                               pattern = '\\(estimated\\)')
+```
+
+
+```{r}
+head(top250movies)
+```
+
+
+##  Les dades contenen zeros, elements buits o altres valors numèrics que indiquin la pèrdua de dades?
+*Gestiona cadascun d'aquests casos utilitzant el mètode d'imputació que consideris més adequat.*
+
+
+
+##  Identifica i gestiona adequadament el tipus de dada de cada atribut 
+*(p.ex. conversió de variables categòriques en factor).*
+
+
+
+##  Identifica i gestiona els valors extrems.
+
+##  Justifica la necessitat d'altres mètodes de neteja per a aquest dataset en particular i, de ser necessari, aplica'ls.
+
+
+## Es defineixen les funcions de neteja
+
+```{r}
+# Eliminació del patró de la columna especificada
+  top250movies.remove <- function(column,
+                                  pattern){
+    return(str_remove(string = top250movies[[column]],
+                      pattern = pattern))
+  }
+
+# Conversió de la duració a minuts
+  top250movies.duration_conversion <- function(duration){
+    value <- str_split(string = duration,
+                       pattern = ' ')[[1]]
+    if(is.na(value[2])){
+      if(grepl(pattern = 'h',
+               x = value[1])){
+        hours <- as.numeric(str_remove_all(string = value[1],
+                                           pattern = '[a-z]'))
+        minutes <- 0
+        }else{
+          hours <- 0
+          minutes <- as.numeric(str_remove_all(string = value[1],
+                                           pattern = '[a-z]'))
+      }
+      }else{
+        hours <- as.numeric(str_remove_all(string = value[1],
+                                           pattern = '[a-z]'))
+        minutes <- as.numeric(str_remove_all(string = value[2],
+                                           pattern = '[a-z]'))
+      }
+    time <- hours*60 + minutes
+    return(time)
+  }
+
+# Conversió dels reviews en unitats
+  top250movies.review_conversion <- function(review){
+    if(grepl(pattern = 'K',
+             x = review)){
+      units <- paste(str_remove_all(string = review,
+                                    pattern = '[^0-9]'),
+                     '000',
+                     sep = '')
+      }else{
+        if(grepl(pattern = '\\.',
+                 x = review)){
+          units <- paste(str_remove_all(string = review,
+                                        pattern = '[^0-9]'),
+                         '00000',
+                         sep = '')
+          }else{
+            units <- paste(str_remove_all(string = review,
+                                          pattern = '[^0-9]'),
+                           '000000',
+                           sep = '')}
+      }
+    return(units)
+  }
+
+# Conversió del pressupost en dòlars
+  top250movies.dollar_conversion <- function(monetary_units){
+    if(is.na(monetary_units)){
+      conversion <- NA
+    }else{
+    conversion_value <- subset(Monetary_conversion_policy,
+                               subset = Local == str_replace_all(string = monetary_units,
+                                                                 pattern = '[0-9]|\\,|\\s',
+                                                                 replacement = ''),
+                               select = Dolar,
+                               drop = TRUE)
+    value <- as.numeric(str_replace_all(string = monetary_units,
+                                        pattern = '[^0-9]',
+                                        replacement = ''))
+    conversion <- value*conversion_value
+    }
+    return(conversion)
+  }
+
+# Proporció de valors perduts en la columna
+  top250movies.na_prop <- function(column){
+    value <- subset(x = top250movies,
+                    select = column,
+                    drop = TRUE)
+    return(cat(column,
+               ': ',
+               round(x = sum(is.na(value))/length(value),
+                     digits = 2)*100,
+               '%',
+               '\n',
+               sep = ''))
+  }
+
+# Valoració de valors positius
+  top250movies.is_positive <- function(column){
+    value <- subset(x = top250movies,
+                    select = column,
+                    drop = TRUE)
+    return(value > 0)
+  }
+```
+
+## Eliminació de caràcters superflus
+
+```{r}
+# Title
+#  top250movies$Title <- top250movies.extraction(column = 'Title',
+#                                                pattern = 'Original title:')
+
+# Budget
+#  top250movies$Budget <- top250movies.extraction(column = 'Budget',
+#                                                 pattern = '\\(estimated\\)')
+```
+
+## Estandardització
+
+S'observen els valors que pren la característica 'Classification'.
+
+```{r}
+# Classification
+  top250movies$Classification <- factor(top250movies$Classification,
+                                        levels = c('13',
+                                                   '18',
+                                                   '12',
+                                                   'A',
+                                                   '16',
+                                                   '7',
+                                                   'Apta para mayores',
+                                                   'PG-13',
+                                                   '(Banned)',
+                                                   'PG',
+                                                   'Passed',
+                                                   '14',
+                                                   'A/i',
+                                                   'T',
+                                                   'Not Rated',
+                                                   '7/i'),
+                                        labels = c('R',
+                                                   'R',
+                                                   'R',
+                                                   'PG',
+                                                   'R',
+                                                   'PG-13',
+                                                   'PG',
+                                                   'PG-13',
+                                                   'R',
+                                                   'PG',
+                                                   'PG',
+                                                   'PG',
+                                                   'PG',
+                                                   'R',
+                                                   'PG'),
+                                        exclude = 'Not Rated')
+
+# Collection
+  top250movies$Collection <- str_remove_all(string = top250movies$Collection,
+                                            pattern = '[^0-9]')
+
+# Gestió d'espais
+  for(i in colnames(top250movies)){
+    top250movies[[i]] <- str_trim(string = top250movies[[i]],
+                                  side = 'both')
+  }
+```
+
+## Conversió
+
+```{r}
+# Duration
+  for(duration in top250movies$Duration){
+    top250movies$Duration[top250movies$Duration == duration] <-
+      top250movies.duration_conversion(duration)
+  }
+
+# Review
+  for(review in top250movies$Review){
+    top250movies$Review[top250movies$Review == review] <-
+      top250movies.review_conversion(review)
+  }
+  
+# Budget
+  # Es defineix la política de conversió
+  Monetary_conversion_policy <- data.frame('Local' = c('R$',
+                                                       'FRF',
+                                                       'DKK',
+                                                       'DEM',
+                                                       'A$',
+                                                       '₹',
+                                                       '€',
+                                                       '₩',
+                                                       '¥',
+                                                       '£',
+                                                       '$'),
+                                           'Dolar' = c(0.055,
+                                                       0.164261,
+                                                       0.14,
+                                                       0.0018,
+                                                       0.66,
+                                                       0.012,
+                                                       1.08,
+                                                       0.00073,
+                                                       0.0064,
+                                                       1.26,
+                                                       1))
+  
+  for(monetary_units in top250movies$Budget){
+      top250movies$Budget[top250movies$Budget == monetary_units] <-
+        top250movies.dollar_conversion(monetary_units)
+  }
+```
+
+## Canvi de tipus de dades
+
+Es modifica la naturalesa dels atributs de la data.
+
+```{r}
+# Variables de caràcter enter
+#  for(i in c('Year', 'Duration', 'Review', 'Budget', 'Collection')){
+#    top250movies[[i]] <- as.integer(top250movies[[i]])
+#  }
+
+# Variables de caràcter flotant
+  top250movies$Rating <- as.numeric(top250movies$Rating)
+
+# Variables de caràcter factor
+  for(i in c('Classification', 'Director')){
+    top250movies[[i]] <- as.factor(top250movies[[i]])
+  }
+```
+
+## Transformacions dicotòmiques
+
+```{r}
+# Genre
+  genre_list <- unique(str_trim(unlist(strsplit(top250movies$Genre,
+                                               split = ','))))
+  genre_list <- genre_list[!is.na(genre_list)]
+  
+  for(i in genre_list){
+    top250movies[[paste('Is_',
+                     i,
+                     sep = '')]] <-
+      unlist(lapply(top250movies$Genre,
+                    function(x){grepl(pattern = i,
+                                      x = x)}))
+  }
+```
+
+## Valors extrems
+
+Es cerquen i suprimeixen valors extrems per a les variables Budget i Collection. Totes les altres variables de caràcter numèric es consideren que contenen valors legítims.
+
+```{r}
+#for(i in colnames(top250movies)){
+#  if(i %in% c('Budget', 'Collection')){
+#    outlier <- boxplot(top250movies[[i]])$out
+#    top250movies[[i]][top250movies[[i]] %in% outlier] <- NA}
+#  }
+```
+
+## Imputació
+
+Primerament es cerca la proporció de valors perduts per característica.
+
+```{r}
+for(column in colnames(top250movies)){
+  top250movies.na_prop(column)
+}
+```
+
+S'adverteix que la proporció de valors perduts no supera en cap cas el 19%. Per tant es procedeix amb la imputació per k-NN considerant només el gènere, l'any, el rating i el review. 
+
+```{r}
+# Imputació per k-NN
+  for(i in colnames(top250movies)){
+    if(anyNA(top250movies[[i]])){
+      top250movies <- kNN(data = top250movies,
+                          variable = i,
+                          metric = 'grower',
+                          dist_var = c('Is_Drama',
+                                       'Is_Crime',
+                                       'Is_Action',
+                                       'Is_Biography',
+                                       'Is_History',
+                                       'Is_Adventure',
+                                       'Is_Western',
+                                       'Is_Romance',
+                                       'Is_Sci-Fi',
+                                       'Is_Fantasy',
+                                       'Is_Mystery',
+                                       'Is_Family',
+                                       'Is_Thriller',
+                                       'Is_War',
+                                       'Is_Comedy',
+                                       'Is_Animation',
+                                       'Is_Music',
+                                       'Is_Horror',
+                                       'Is_Film-Noir',
+                                       'Is_Musical',
+                                       'Is_Sport',
+                                       'Year',
+                                       'Rating',
+                                       'Review'),
+                          imp_var = FALSE)
+    }
+  }
+```
+
+
+
+```{r}
+head(top250movies)
+tail(top250movies)
+```
+
+
+******
+# Anàlisi de les dades.
+******
+
+## Aplica un model supervisat i un no supervisat a les dades i comenta els resultats obtinguts.
+
+
+```{r}
+InformationGain <- function( tble ) {
+  tble <- as.data.frame.matrix(tble)
+  entropyBefore <- Entropy(colSums(tble))
+  s <- rowSums(tble)
+  entropyAfter <- sum (s / sum(s) * apply(tble, MARGIN = 1, FUN = Entropy ))
+  informationGain <- entropyBefore - entropyAfter
+  return (informationGain)
+}
+```
+
+
+```{r}
+if (!require('DescTools')) install.packages('DescTools'); library('DescTools')
+cat("Reviews: ", round(InformationGain(table(top250movies[,c('Review', 'Rating')]))*100,2),"%")
+```
+
+```{r}
+cat("Budget: ", round(InformationGain(table(top250movies[,c('Budget', 'Rating')]))*100,2),"%")
+```
+
+
+
+```{r}
+cat("Collection: ", round(InformationGain(table(top250movies[,c('Collection', 'Rating')]))*100,2),"%")
+```
+
+
+
+```{r}
+cat("Duration: ", round(InformationGain(table(top250movies[,c('Duration', 'Rating')]))*100,2),"%")
+```
+
+
+```{r}
+top250movies_id3 <- top250movies[c('Collection','Review','Budget','Duration','Rating')]
+vars <- c('Collection','Review','Budget','Duration')
+knitr::kable(head(top250movies_id3))
+```
+
+
+
+```{r}
+set.seed(666)
+y <- top250movies_id3[,5] 
+X <- top250movies_id3[,c(1:4)]
+```
+
+
+
+```{r}
+split_prop <- 3 
+indexes = sample(1:nrow(top250movies_id3), size=floor(((split_prop-1)/split_prop)*nrow(top250movies_id3)))
+trainX<-X[indexes,]
+trainy<-y[indexes]
+testX<-X[-indexes,]
+testy<-y[-indexes]
+```
+
+
+```{r}
+summary(trainX)
+```
+
+
+```{r}
+summary(trainy)
+```
+
+
+```{r}
+summary(testX)
+```
+
+
+```{r}
+summary(testy)
+```
+
+
+```{r}
+trainy = as.factor(trainy)
+model <- C50::C5.0(trainX, trainy,rules=TRUE )
+summary(model)
+```
+
+
+
+```{r}
+if (!require('grid')) install.packages('grid'); library('grid')
+model <- C50::C5.0(trainX, trainy)
+plot(model,gp = gpar(fontsize = 7.0))
+```
+
+
+
+## Aplica una prova per contrast d'hipòtesi. 
+*Tingues en compte que algunes d'aquestes proves requereixen verificar prèviament la normalitat i homocedasticitat de les dades.*
+
+
+******
+# Representació dels resultats a partir de taules i gràfiques.
+******
+
+*Aquest apartat es pot respondre al llarg de la pràctica, sense la necessitat de concentrar totes les representacions en aquest apartat. S'ha de representar tant el contingut del dataset per a observar les proporcions i distribucions de les diferents variables una vegada aplicada l'etapa de neteja, com els resultats obtinguts després de l'etapa d'anàlisi.*
+
+
+******
+# Resolució del problema.
+******
+
+*A partir dels resultats obtinguts, quines són les conclusions? Els resultats permeten respondre al problema?*
