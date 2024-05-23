@@ -51,87 +51,89 @@ if(!require(VIM)){
 # Eliminació del patró de la columna especificada
   top250movies.remove <- function(column,
                                   pattern){
-    result <- str_remove_all(string = top250movies[[column]],
+    input <- top250movies[[column]]
+    result <- str_remove_all(string = input,
                              pattern = pattern)
     return(result)
   }
 
 # Conversió de la duració a minuts
-  top250movies.duration_conversion <- function(duration){
-    value <- str_split(string = duration,
-                       pattern = ' ')[[1]]
-    if(is.na(value[2])){
-      if(grepl(pattern = 'h',
-               x = value[1])){
-        hours <- as.numeric(str_remove_all(string = value[1],
-                                           pattern = '[a-z]'))
-        minutes <- 0
+  top250movies.time_conversion <- function(column){
+    input <- top250movies[[column]]
+    time <- c()
+    for(i in 1:length(input)){
+      value <- str_split(string = input[i],
+                         pattern = ' ')[[1]]
+      hours <- 0
+      minutes <- 0
+      if(is.na(value[2])){
+        if(grepl(pattern = 'h',
+                 x = value[1])){
+          hours <- as.numeric(str_remove_all(string = value[1],
+                                             pattern = '[a-z]'))
+          }else{
+            minutes <- as.numeric(str_remove_all(string = value[1],
+                                                 pattern = '[a-z]'))
+            }
         }else{
-          hours <- 0
-          minutes <- as.numeric(str_remove_all(string = value[1],
-                                           pattern = '[a-z]'))
+          hours <- as.numeric(str_remove_all(string = value[1],
+                                             pattern = '[a-z]'))
+          minutes <- as.numeric(str_remove_all(string = value[2],
+                                             pattern = '[a-z]'))
+          }
+      time[i] <- hours*60+minutes
       }
-      }else{
-        hours <- as.numeric(str_remove_all(string = value[1],
-                                           pattern = '[a-z]'))
-        minutes <- as.numeric(str_remove_all(string = value[2],
-                                           pattern = '[a-z]'))
-      }
-    time <- hours*60 + minutes
     return(time)
-  }
+    }
 
 # Conversió dels reviews en unitats
-  top250movies.review_conversion <- function(review){
-    if(grepl(pattern = 'K',
-             x = review)){
-      units <- paste(str_remove_all(string = review,
-                                    pattern = '[^0-9]'),
-                     '000',
-                     sep = '')
-      }else{
-        if(grepl(pattern = '\\.',
-                 x = review)){
-          units <- paste(str_remove_all(string = review,
-                                        pattern = '[^0-9]'),
-                         '00000',
-                         sep = '')
-          }else{
-            units <- paste(str_remove_all(string = review,
-                                          pattern = '[^0-9]'),
-                           '000000',
-                           sep = '')}
-      }
+  top250movies.units_conversion <- function(column){
+    input <- top250movies[[column]]
+    ifelse(test = grepl(pattern = 'K',
+                        x = input),
+           yes = units <- paste(str_remove_all(string = input,
+                                         pattern = '[^0-9]'),
+                                '000',
+                                sep = ''),
+           no = ifelse(test = grepl(pattern = '\\.',
+                                    x = input),
+                       yes = units <- paste(str_remove_all(string = input,
+                                                           pattern = '[^0-9]'),
+                                            '00000',
+                                            sep = ''),
+                       no = units <- paste(str_remove_all(string = input,
+                                                          pattern = '[^0-9]'),
+                                           '000000',
+                                           sep = '')))
     return(units)
   }
 
 # Conversió del pressupost en dòlars
-  top250movies.dollar_conversion <- function(monetary_units){
-    if(is.na(monetary_units)){
-      conversion <- NA
-    }else{
-    conversion_value <- subset(Monetary_conversion_policy,
-                               subset = Local == str_replace_all(string = monetary_units,
-                                                                 pattern = '[0-9]|\\,|\\s',
-                                                                 replacement = ''),
-                               select = Dolar,
-                               drop = TRUE)
-    value <- as.numeric(str_replace_all(string = monetary_units,
-                                        pattern = '[^0-9]',
-                                        replacement = ''))
-    conversion <- value*conversion_value
-    }
+  top250movies.dollar_conversion <- function(column){
+    input <- top250movies[[column]]
+    conversion <- c()
+    for(i in 1:length(input)){
+      ifelse(test = is.na(input[i]),
+             yes = conversion[i] <- NA,
+             no = conversion[i] <- subset(Monetary_conversion_policy,
+                                          subset = Local == str_replace_all(string = input[i],
+                                                                            pattern = '[0-9]',
+                                                                            replacement = ''),
+                                          select = Dolar,
+                                          drop = TRUE)*
+               as.numeric(str_replace_all(string = input[i],
+                                          pattern = '[^0-9]',
+                                          replacement = '')))
+      }
     return(conversion)
-  }
+    }
 
 # Proporció de valors perduts en la columna
   top250movies.na_prop <- function(column){
-    value <- subset(x = top250movies,
-                    select = column,
-                    drop = TRUE)
+    input <- top250movies[[column]]
     result <- cat(column,
                ': ',
-               round(x = sum(is.na(value))/length(value),
+               round(x = sum(is.na(input))/length(input),
                      digits = 3)*100,
                '%',
                '\n',
@@ -140,32 +142,28 @@ if(!require(VIM)){
   }
   
 # Detecció de valors
-  top250movies.detect <- function(value,
+  top250movies.detect <- function(column,
                                   pattern){
-    if(is.na(value)){
-      result <- NA
-    }else{
-      result <- grepl(pattern = pattern,
-                      x = value)
-    }
+    input <- top250movies[[column]]
+    ifelse(test = is.na(input),
+           yes = result <- NA,
+           no = result <- grepl(pattern = pattern,
+                                x = input))
     return(result)
   }
 
 # Valoració de la pel·lícula en termes de rendibilitat
   top250movies.is_profitable <- function(minimum_criteria){
-    budget <- subset(x = top250movies,
-                     select = Budget,
-                     drop = TRUE)
-    collection <- subset(x = top250movies,
-                         select = Collection,
-                        drop = TRUE)
+    budget <- top250movies[['Budget']]
+    collection <- top250movies[['Collection']]
     result <- collection-minimum_criteria*budget > 0
     return(result)
   }
   
 # Normalització min-max
   top250movies.minmax_norm <- function(column){
-    result <- (column - min(column))/(max(column) - min(column))
+    input <- top250movies[[column]]
+    result <- (input-min(input))/(max(input)-min(input))
     return(result)
   }
 ```
@@ -179,7 +177,11 @@ if(!require(VIM)){
 
 # Budget
   top250movies$Budget <- top250movies.remove(column = 'Budget',
-                                             pattern = '\\(estimated\\)')
+                                             pattern = '\\(estimated\\)|,|\\s')
+
+# Collection
+  top250movies$Collection <- top250movies.remove(column = 'Collection',
+                                                 pattern = '[^0-9]')
 ```
 
 ## Estandardització
@@ -187,6 +189,12 @@ if(!require(VIM)){
 S'observen els valors que pren la característica 'Classification'.
 
 ```{r}
+# Gestió d'espais
+  top250movies <- as.data.frame(apply(X = top250movies,
+                                      MARGIN = c(1,2),
+                                      FUN = str_trim,
+                                      side = 'both'))
+
 # Classification
   top250movies$Classification <- factor(top250movies$Classification,
                                         levels = c('13',
@@ -221,30 +229,16 @@ S'observen els valors que pren la característica 'Classification'.
                                                    'R',
                                                    'PG'),
                                         exclude = 'Not Rated')
-
-# Collection
-  top250movies$Collection <- top250movies.remove(column = 'Collection',
-                                                 pattern = '[^0-9]')
-
-# Gestió d'espais
-  top250movies <- as.data.frame(apply(X = top250movies,
-                                      MARGIN = c(1,2),
-                                      FUN = str_trim,
-                                      side = 'both'))
 ```
 
 ## Conversió
 
 ```{r}
 # Duration
-  top250movies$Duration <- mapply(FUN = top250movies.duration_conversion,
-                                  duration = top250movies$Duration,
-                                  USE.NAMES = FALSE)
+  top250movies$Duration <- top250movies.time_conversion(column = 'Duration')
 
 # Review
-  top250movies$Review <- mapply(FUN = top250movies.review_conversion,
-                                review = top250movies$Review,
-                                USE.NAMES = FALSE)
+  top250movies$Review <- top250movies.units_conversion(column = 'Review')
   
 # Budget
   # Es defineix la política de conversió
@@ -271,9 +265,7 @@ S'observen els valors que pren la característica 'Classification'.
                                                        1.26,
                                                        1))
   
-  top250movies$Budget <- mapply(FUN = top250movies.dollar_conversion,
-                                monetary_units = top250movies$Budget,
-                                USE.NAMES = FALSE)
+  top250movies$Budget <- top250movies.dollar_conversion(column = 'Budget')
 ```
 
 ## Canvi de tipus de dades
@@ -281,18 +273,23 @@ S'observen els valors que pren la característica 'Classification'.
 Es modifica la naturalesa dels atributs de la data.
 
 ```{r}
-# Variables de caràcter enter
-  for(i in c('Year', 'Duration', 'Review', 'Budget', 'Collection')){
-    top250movies[[i]] <- as.integer(top250movies[[i]])
-  }
-
-# Variables de caràcter flotant
-  top250movies$Rating <- as.numeric(top250movies$Rating)
-
-# Variables de caràcter factor
-  for(i in c('Classification', 'Director')){
-    top250movies[[i]] <- as.factor(top250movies[[i]])
-  }
+for(column in colnames(top250movies)){
+  
+  # Variables de tipus integer
+    if(column %in% c('Year', 'Duration', 'Review', 'Budget', 'Collection')){
+      top250movies[[column]] <- as.integer(top250movies[[column]])
+    }
+  
+  # Variables de tipus factor
+    if(column %in% c('Classification', 'Director')){
+      top250movies[[column]] <- as.factor(top250movies[[column]])
+    }
+  
+  # Variables de tipus numeric
+    if(column == 'Rating'){
+        top250movies[[column]] <- as.numeric(top250movies[[column]])
+    }
+}
 ```
 
 ## Transformacions dicotòmiques
@@ -303,14 +300,11 @@ Es modifica la naturalesa dels atributs de la data.
                                                split = ','))))
   genre_list <- genre_list[!is.na(genre_list)]
   
-  for(i in genre_list){
+  for(genre in genre_list){
     top250movies[[paste('Is_',
-                     i,
-                     sep = '')]] <-
-      mapply(FUN = top250movies.detect,
-             value = top250movies$Genre,
-             pattern = i,
-             USE.NAMES = FALSE)
+                        genre,
+                        sep = '')]] <- top250movies.detect(column = 'Genre',
+                                                           pattern = genre)
   }
 ```
 
@@ -319,10 +313,10 @@ Es modifica la naturalesa dels atributs de la data.
 Es cerquen i suprimeixen valors extrems per a les variables Budget i Collection. Totes les altres variables de caràcter numèric es consideren que contenen valors legítims.
 
 ```{r}
-for(i in colnames(top250movies)){
-  if(i %in% c('Budget', 'Collection')){
-    outlier <- boxplot(top250movies[[i]])$out
-    top250movies[[i]][top250movies[[i]] %in% outlier] <- NA}
+for(column in colnames(top250movies)){
+  if(column %in% c('Budget', 'Collection')){
+    outlier <- boxplot(top250movies[[column]])$out
+    top250movies[[column]][top250movies[[column]] %in% outlier] <- NA}
   }
 ```
 
@@ -332,7 +326,7 @@ Primerament es cerca la proporció de valors perduts per característica.
 
 ```{r}
 for(column in colnames(top250movies)){
-  top250movies.na_prop(column)
+  top250movies.na_prop(column = column)
 }
 ```
 
@@ -340,10 +334,10 @@ S'adverteix que la proporció de valors perduts no supera en cap cas el 19%. Per
 
 ```{r}
 # Imputació per k-NN
-  for(i in colnames(top250movies)){
-    if(anyNA(top250movies[[i]])){
+  for(column in colnames(top250movies)){
+    if(anyNA(top250movies[[column]])){
       top250movies <- kNN(data = top250movies,
-                          variable = i,
+                          variable = column,
                           metric = 'grower',
                           dist_var = c('Is_Drama',
                                        'Is_Crime',
@@ -380,8 +374,8 @@ S'adverteix que la proporció de valors perduts no supera en cap cas el 19%. Per
 # S'obtenen els beneficis per a cada pel·lícula
   top250movies$Net_income <- top250movies$Collection - top250movies$Budget
 
-# Es comprova si la pel·lícula és rendible
-  top250movies$Profitable <- top250movies.is_profitable(2)
+# Es comprova si la pel·lícula és rendible només si Collection és superior a 2 vegades Budget
+  top250movies$Profitable <- top250movies.is_profitable(minimum_criteria = 2)
 ```
 
 ## Normalització min-max d'atrbiuts numèrics
@@ -389,10 +383,10 @@ S'adverteix que la proporció de valors perduts no supera en cap cas el 19%. Per
 Es normalitzen els valors de les característiques numèriques en top250movies d'acord al criteri min-max.
 
 ```{r}
-for(i in colnames(top250movies)){
-  if(class(top250movies[[i]]) %in% c('numeric', 'integer') &
-     i != 'Year'){
-    top250movies[[i]] <- top250movies.minmax_norm(top250movies[[i]])
+for(column in colnames(top250movies)){
+  if(class(top250movies[[column]]) %in% c('numeric', 'integer') &
+     column != 'Year'){
+    top250movies[[column]] <- top250movies.minmax_norm(column = column)
   }
 }
 ```
