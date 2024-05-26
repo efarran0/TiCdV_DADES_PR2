@@ -52,7 +52,7 @@ if (!require('dplyr')) install.packages('dplyr'); library('dplyr')
 Es vol analitzar si, amb els atributs disponibles al dataset, es pot establir relacions entre les valoracions que fixem com a variable de classe, i el gènere de la pel·licula, el director/a, o el pressupost destinat a la seva producció. Addicionalment, es pretén determinar si aquesta valoració comporta una major rendibilitat.
 
 
-Mostrem a continuació un resum de les variables del dataset, i una mostra del seu continugut, indicant el tipus de dada segons R:
+Mostrem a continuació un resum de les variables del dataset, i una mostra del seu contingut, indicant el tipus de dada segons R:
 
 
 ```{r}
@@ -101,19 +101,20 @@ Breu descripció dels atributs:
 **RESPOSTA JORDI:** Abans d'iniciar el procés de correcció o eliminació de mostres errònies del dataset, comencem depurant algunes variables que contenen informació no pertinent com per exemple el text *"Original title: "* a la variable **Title**, o el text *"(estimated)"* a la variable **Budget**:
 
 ```{r}
-# Neteja
-## Extracció de caràcters superflus
-top250movies.extraction <- function(column,
-                                    pattern){
-  return(str_remove(string = top250movies[[column]],
-                    pattern = pattern))
-}
+## Neteja
+### Extracció de caràcters superflus
+#top250movies.extraction <- function(column,
+#                                    pattern){
+#  return(str_remove(string = top250movies[[column]],
+#                    pattern = pattern))
+#}
 
-top250movies$Title <- top250movies.extraction(column = 'Title',
-                                              pattern = 'Original title:')
+#top250movies$Title <- top250movies.extraction(column = 'Title',
+#                                              pattern = 'Original title:')
 
-top250movies$Budget <- top250movies.extraction(column = 'Budget',
-                                               pattern = '\\(estimated\\)')
+#top250movies$Budget <- top250movies.extraction(column = 'Budget',
+#                                               pattern = '\\(estimated\\)')
+
 ```
 
 
@@ -139,12 +140,16 @@ head(top250movies)
 
 ## Es defineixen les funcions de neteja
 
+
+## Es defineixen les funcions de neteja
+
 ```{r}
 # Eliminació del patró de la columna especificada
   top250movies.remove <- function(column,
                                   pattern){
-    return(str_remove(string = top250movies[[column]],
-                      pattern = pattern))
+    result <- str_remove_all(string = top250movies[[column]],
+                             pattern = pattern)
+    return(result)
   }
 
 # Conversió de la duració a minuts
@@ -220,21 +225,44 @@ head(top250movies)
     value <- subset(x = top250movies,
                     select = column,
                     drop = TRUE)
-    return(cat(column,
+    result <- cat(column,
                ': ',
                round(x = sum(is.na(value))/length(value),
-                     digits = 2)*100,
+                     digits = 3)*100,
                '%',
                '\n',
-               sep = ''))
+               sep = '')
+    return(result)
+  }
+  
+# Detecció de valors
+  top250movies.detect <- function(value,
+                                  pattern){
+    if(is.na(value)){
+      result <- NA
+    }else{
+      result <- grepl(pattern = pattern,
+                      x = value)
+    }
+    return(result)
   }
 
-# Valoració de valors positius
-  top250movies.is_positive <- function(column){
-    value <- subset(x = top250movies,
-                    select = column,
-                    drop = TRUE)
-    return(value > 0)
+# Valoració de la pel·lícula en termes de rendibilitat
+  top250movies.is_profitable <- function(minimum_criteria){
+    budget <- subset(x = top250movies,
+                     select = Budget,
+                     drop = TRUE)
+    collection <- subset(x = top250movies,
+                         select = Collection,
+                        drop = TRUE)
+    result <- collection-minimum_criteria*budget > 0
+    return(result)
+  }
+  
+# Normalització min-max
+  top250movies.minmax_norm <- function(column){
+    result <- (column - min(column))/(max(column) - min(column))
+    return(result)
   }
 ```
 
@@ -242,12 +270,12 @@ head(top250movies)
 
 ```{r}
 # Title
-#  top250movies$Title <- top250movies.extraction(column = 'Title',
-#                                                pattern = 'Original title:')
+  top250movies$Title <- top250movies.remove(column = 'Title',
+                                            pattern = 'Original title:')
 
 # Budget
-#  top250movies$Budget <- top250movies.extraction(column = 'Budget',
-#                                                 pattern = '\\(estimated\\)')
+  top250movies$Budget <- top250movies.remove(column = 'Budget',
+                                             pattern = '\\(estimated\\)')
 ```
 
 ## Estandardització
@@ -291,30 +319,28 @@ S'observen els valors que pren la característica 'Classification'.
                                         exclude = 'Not Rated')
 
 # Collection
-  top250movies$Collection <- str_remove_all(string = top250movies$Collection,
-                                            pattern = '[^0-9]')
+  top250movies$Collection <- top250movies.remove(column = 'Collection',
+                                                 pattern = '[^0-9]')
 
 # Gestió d'espais
-  for(i in colnames(top250movies)){
-    top250movies[[i]] <- str_trim(string = top250movies[[i]],
-                                  side = 'both')
-  }
+  top250movies <- as.data.frame(apply(X = top250movies,
+                                      MARGIN = c(1,2),
+                                      FUN = str_trim,
+                                      side = 'both'))
 ```
 
 ## Conversió
 
 ```{r}
 # Duration
-  for(duration in top250movies$Duration){
-    top250movies$Duration[top250movies$Duration == duration] <-
-      top250movies.duration_conversion(duration)
-  }
+  top250movies$Duration <- mapply(FUN = top250movies.duration_conversion,
+                                  duration = top250movies$Duration,
+                                  USE.NAMES = FALSE)
 
 # Review
-  for(review in top250movies$Review){
-    top250movies$Review[top250movies$Review == review] <-
-      top250movies.review_conversion(review)
-  }
+  top250movies$Review <- mapply(FUN = top250movies.review_conversion,
+                                review = top250movies$Review,
+                                USE.NAMES = FALSE)
   
 # Budget
   # Es defineix la política de conversió
@@ -341,10 +367,9 @@ S'observen els valors que pren la característica 'Classification'.
                                                        1.26,
                                                        1))
   
-  for(monetary_units in top250movies$Budget){
-      top250movies$Budget[top250movies$Budget == monetary_units] <-
-        top250movies.dollar_conversion(monetary_units)
-  }
+  top250movies$Budget <- mapply(FUN = top250movies.dollar_conversion,
+                                monetary_units = top250movies$Budget,
+                                USE.NAMES = FALSE)
 ```
 
 ## Canvi de tipus de dades
@@ -353,9 +378,9 @@ Es modifica la naturalesa dels atributs de la data.
 
 ```{r}
 # Variables de caràcter enter
-#  for(i in c('Year', 'Duration', 'Review', 'Budget', 'Collection')){
-#    top250movies[[i]] <- as.integer(top250movies[[i]])
-#  }
+  for(i in c('Year', 'Duration', 'Review', 'Budget', 'Collection')){
+    top250movies[[i]] <- as.integer(top250movies[[i]])
+  }
 
 # Variables de caràcter flotant
   top250movies$Rating <- as.numeric(top250movies$Rating)
@@ -378,9 +403,11 @@ Es modifica la naturalesa dels atributs de la data.
     top250movies[[paste('Is_',
                      i,
                      sep = '')]] <-
-      unlist(lapply(top250movies$Genre,
-                    function(x){grepl(pattern = i,
-                                      x = x)}))
+      mapply(FUN = top250movies.detect,
+             value = top250movies$Genre,
+             pattern = i,
+             USE.NAMES = FALSE)
+    
   }
 ```
 
@@ -389,11 +416,11 @@ Es modifica la naturalesa dels atributs de la data.
 Es cerquen i suprimeixen valors extrems per a les variables Budget i Collection. Totes les altres variables de caràcter numèric es consideren que contenen valors legítims.
 
 ```{r}
-#for(i in colnames(top250movies)){
-#  if(i %in% c('Budget', 'Collection')){
-#    outlier <- boxplot(top250movies[[i]])$out
-#    top250movies[[i]][top250movies[[i]] %in% outlier] <- NA}
-#  }
+for(i in colnames(top250movies)){
+  if(i %in% c('Budget', 'Collection')){
+    outlier <- boxplot(top250movies[[i]])$out
+    top250movies[[i]][top250movies[[i]] %in% outlier] <- NA}
+  }
 ```
 
 ## Imputació
@@ -444,7 +471,31 @@ S'adverteix que la proporció de valors perduts no supera en cap cas el 19%. Per
   }
 ```
 
+## Generació de noves característiques
 
+```{r}
+# S'obtenen els beneficis per a cada pel·lícula
+  top250movies$Net_income <- top250movies$Collection - top250movies$Budget
+
+# Es comprova si la pel·lícula és rendible
+  top250movies$Profitable <- top250movies.is_profitable(2)
+```
+
+## Normalització min-max d'atrbiuts numèrics
+
+Es normalitzen els valors de les característiques numèriques en top250movies d'acord al criteri min-max.
+
+```{r}
+
+top250moviesSenseNormalitzar <- top250movies
+  
+for(i in colnames(top250movies)){
+  if(class(top250movies[[i]]) %in% c('numeric', 'integer') &
+     i != 'Year'){
+    top250movies[[i]] <- top250movies.minmax_norm(top250movies[[i]])
+  }
+}
+```
 
 ```{r}
 head(top250movies)
@@ -458,85 +509,83 @@ tail(top250movies)
 
 ## Aplica un model supervisat i un no supervisat a les dades i comenta els resultats obtinguts.
 
+### Model supervisat
+
+Triem un mètode de classificació per al model supervisat. Implementem a continuació un arbre de decisió per a crear regles que determinin si una pel·lícula és profitosa o no depenent de les variables independents. Per això, tenim les instàncies correctament etiquetades a la variable de classe dicotòmica "Profitable", generada a partir dels atributs "Budget" i "Collectuion". S'estima que una pel·lícla és profitosa, si la recaudació dobla al pressupost destinat per a la seva producció.
+
+#### Preparació de les dades per al model
+
+Per a la selecció de característiues, excloem, els atributs Títol, Director, Duració perquè hi ha molta varietat en les dades. Els camps Collection i Budget també els excloem perquè son atributs que deriven en la variable objectiu "Profitable".
+
+
+*Nota Interna [JA]. De moment comento aquestes  línees que calculen el guany d'entropia però em poden ser utils.*
 
 ```{r}
-InformationGain <- function( tble ) {
-  tble <- as.data.frame.matrix(tble)
-  entropyBefore <- Entropy(colSums(tble))
-  s <- rowSums(tble)
-  entropyAfter <- sum (s / sum(s) * apply(tble, MARGIN = 1, FUN = Entropy ))
-  informationGain <- entropyBefore - entropyAfter
-  return (informationGain)
-}
+#InformationGain <- function( tble ) {
+#  tble <- as.data.frame.matrix(tble)
+#  entropyBefore <- Entropy(colSums(tble))
+#  s <- rowSums(tble)
+#  entropyAfter <- sum (s / sum(s) * apply(tble, MARGIN = 1, FUN = Entropy ))
+#  informationGain <- entropyBefore - entropyAfter
+#  return (informationGain)
+#}
 ```
 
 
 ```{r}
-if (!require('DescTools')) install.packages('DescTools'); library('DescTools')
-cat("Reviews: ", round(InformationGain(table(top250movies[,c('Review', 'Rating')]))*100,2),"%")
+#if (!require('DescTools')) install.packages('DescTools'); library('DescTools')
+#cat("Reviews: ", round(InformationGain(table(top250movies[,c('Review', 'Rating')]))*100,2),"%")
 ```
+
+Fem l'extració en un nou dataset, i conertim els camps lògics que determinen el gènere de la pel·licula a Numèric. A continuació presentem una mostra i fem un resum del subconjunt de dades:
 
 ```{r}
-cat("Budget: ", round(InformationGain(table(top250movies[,c('Budget', 'Rating')]))*100,2),"%")
+
+
+top250movies_id3b <- top250moviesSenseNormalitzar[c('Year','Review','Rating','Is_Drama','Is_Crime','Is_Action','Is_Biography','Is_History','Is_Adventure','Is_Western','Is_Romance','Is_Sci-Fi','Is_Fantasy','Is_Mystery','Is_Family','Is_Thriller','Is_War','Is_Comedy','Is_Animation','Is_Music','Is_Horror','Is_Film-Noir','Is_Musical','Is_Sport','Profitable')]
+
+
+cols.num <- c('Is_Drama','Is_Crime','Is_Action','Is_Biography','Is_History','Is_Adventure','Is_Western','Is_Romance','Is_Sci-Fi','Is_Fantasy','Is_Mystery','Is_Family','Is_Thriller','Is_War','Is_Comedy','Is_Animation','Is_Music','Is_Horror','Is_Film-Noir','Is_Musical','Is_Sport')
+top250movies_id3b[cols.num] <- sapply(top250movies_id3b[cols.num],as.numeric)
+sapply(top250movies_id3b, class)
+
+
+
+varsb <- c('Year','Review','Rating','Is_Drama','Is_Crime','Is_Action','Is_Biography','Is_History','Is_Adventure','Is_Western','Is_Romance','Is_Sci-Fi','Is_Fantasy','Is_Mystery','Is_Family','Is_Thriller','Is_War','Is_Comedy','Is_Animation','Is_Music','Is_Horror','Is_Film-Noir','Is_Musical','Is_Sport')
+
+knitr::kable(head(top250movies_id3b))
+summary(top250movies)
+
+
+
 ```
 
 
+Per validar l’arbre de decisió, és necessari dividir el conjunt de dades en un conjunt d’entrenament i un conjunt de test. El conjunt d’entrenament serà utilitzat per construir i afinar el model, mentre que el conjunt de test servirà per avaluar la seva precisió.
 
-```{r}
-cat("Collection: ", round(InformationGain(table(top250movies[,c('Collection', 'Rating')]))*100,2),"%")
-```
-
-
-
-```{r}
-cat("Duration: ", round(InformationGain(table(top250movies[,c('Duration', 'Rating')]))*100,2),"%")
-```
-
-
-```{r}
-top250movies_id3 <- top250movies[c('Collection','Review','Budget','Duration','Rating')]
-vars <- c('Collection','Review','Budget','Duration')
-knitr::kable(head(top250movies_id3))
-```
+El més correcte és utilitzar un conjunt de dades diferent del que utilitzem per a construir l’arbre, és a dir, un conjunt diferent del d’entrenament. Utilitzem una proporció de 2/3 per el conjunt d’entrenament i 1/3 per el conjunt de prova.
 
 
 
 ```{r}
 set.seed(666)
-y <- top250movies_id3[,5] 
-X <- top250movies_id3[,c(1:4)]
+y <- top250movies_id3b[,25] 
+X <- top250movies_id3b[,c(1:24)]
 ```
 
-
+De manera dinàmica, separem les dades en funció del paràmetre *split_prop* amb un valor de 3:
 
 ```{r}
 split_prop <- 3 
-indexes = sample(1:nrow(top250movies_id3), size=floor(((split_prop-1)/split_prop)*nrow(top250movies_id3)))
+indexes = sample(1:nrow(top250movies_id3b), size=floor(((split_prop-1)/split_prop)*nrow(top250movies_id3b)))
 trainX<-X[indexes,]
 trainy<-y[indexes]
 testX<-X[-indexes,]
 testy<-y[-indexes]
 ```
 
-
-```{r}
-summary(trainX)
-```
-
-
-```{r}
-summary(trainy)
-```
-
-
-```{r}
-summary(testX)
-```
-
-
-```{r}
-summary(testy)
-```
+#### Creació del model
+Per a crear l'arbre de decisió, fem ús de la funció C5.0 de la llibreria C50. Els paràmetres que necessita la funció són la matriu de camps predictors (el conjunt d’entrenament X) i el camp classificador (conjunt d’entrenament y):
 
 
 ```{r}
@@ -545,7 +594,10 @@ model <- C50::C5.0(trainX, trainy,rules=TRUE )
 summary(model)
 ```
 
+El paràmetre Errors mostra el número i percentatge de casos mal classificats en el subconjunt d’entrenament. classifica erròneament 23 dels 166 casos donats, una taxa d’error del 13.9%.
 
+
+A continuació, visualitzarem el model obtingut les regles obtingudes del model:
 
 ```{r}
 if (!require('grid')) install.packages('grid'); library('grid')
@@ -553,7 +605,18 @@ model <- C50::C5.0(trainX, trainy)
 plot(model,gp = gpar(fontsize = 7.0))
 ```
 
+De l'arbre resultant es conclouen la següent classificació:
 
++ En un **92%** dels casos, si la pel·licula és igual o anterior al 75, i les ressenyes son iguals o inferiors a les 188000, aleshores, **NO ÉS PROFITOSA**.
++ En canvi, si és superior al 75,  en un **86%** dels casos, la pel·lícula **ÉS PROFITOSA**, encara que el nombre de ressenyes sigui igual o inferior a les 188800.
++ En el cas de superar les 188000 ressenyes, si la pel·lícula és posterior a l'any 64, la pel·lícula **ÉS PROFITOSA** en un **88%** dels casos.
++ En el cas contrari, és a dir, pel·lícules anteriors al 65 que superin les 188000 ressenyes, si la pel·lícula és del gènere de fantasia, **NO ÉS PROFITOSA** en un **78%** dels casos, però en la resta de gèneres,  **ÉS PROFITOSA** en un **93%** dels casos.
+
+
+Com hem comprovat, el conjunt de dades objecte de l'estudi, treu conclusions molt valuoses que no es poden deduir observant únicament el llistat de les 250 pel·lícules millor valorades per als usuaris d'IMDb.
+
+
+### Model No supervisat
 
 ## Aplica una prova per contrast d'hipòtesi. 
 *Tingues en compte que algunes d'aquestes proves requereixen verificar prèviament la normalitat i homocedasticitat de les dades.*
