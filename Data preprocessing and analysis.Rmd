@@ -147,8 +147,8 @@ options(scipen = 999)
     input <- top250movies[[column]]
     ifelse(test = is.na(input),
            yes = result <- NA,
-           no = result <- grepl(pattern = pattern,
-                                x = input))
+           no = result <- as.numeric(grepl(pattern = pattern,
+                                           x = input)))
     return(result)
   }
 
@@ -352,8 +352,8 @@ Es dicotomitza l'atribut 'Genre' i s'elimina la característica original.
   for (genre in genre_list) {
     top250movies[[paste('Is_',
                         genre,
-                        sep = '')]] <- top250movies.detect(column = 'Genre',
-                                                           pattern = genre)
+                        sep = '')]] <- as.factor(top250movies.detect(column = 'Genre',
+                                                                     pattern = genre))
   }
   
   top250movies <- subset(x = top250movies,
@@ -371,18 +371,3 @@ En base a les dades ja existents, s'obté els beneficis de la pel·lícula i si 
 # Es comprova si la pel·lícula és rendible només si Collection és superior a 2 vegades Budget
   top250movies$Profitable <- top250movies.is_profitable(minimum_criteria = 2)
 ```
-
-## Normalització min-max d'atrbiuts numèrics
-
-Es normalitzen els valors de les característiques numèriques en top250movies d'acord al criteri min-max.
-
-```{r}
-for (column in colnames(top250movies)) {
-  if (class(top250movies[[column]]) %in% c('numeric',
-                                           'integer') &
-      column != 'Year') {
-    top250movies[[column]] <- top250movies.minmax_norm(column = column)
-  }
-}
-```
-
