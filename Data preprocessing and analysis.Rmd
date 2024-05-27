@@ -433,7 +433,7 @@ $p_{2} :=
 
 ## Test estadístic
 
-El test que s'empra en aquest apartat és el contrast de la proporció, o el contrast de dades categòriques, de dues mostres per a la cua superior on es compleix que, sota $H_{0}$:
+El test que s'empra en aquest apartat és el contrast de la proporció, o el contrast de dades categòriques corregit, de dues mostres per a la cua superior on es compleix que, sota $H_{0}$:
 
 $$
 x^{2\space*} = \sum_{i}\sum_{j} \frac{(| O_{ij} - E_{ij} | - 0.5)^2}{E_{ij}} \sim X^{2}_{1}
