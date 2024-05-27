@@ -32,6 +32,16 @@ options(scipen = 999)
     install.packages('VIM')
   }
   library(VIM)
+
+  if (!require(ggplot2)) {
+    install.packages('ggplot2')
+  }
+  library(ggplot2)
+
+  if (!require(ggsats)) {
+    install.packages('ggstats')
+  }
+  library(ggstats)
 ```
 
 \newpage
@@ -156,7 +166,7 @@ options(scipen = 999)
   top250movies.is_profitable <- function(minimum_criteria){
     budget <- top250movies[['Budget']]
     collection <- top250movies[['Collection']]
-    result <- collection - minimum_criteria * budget > 0
+    result <- as.numeric(collection - minimum_criteria * budget > 0)
     return(result)
   }
   
@@ -369,5 +379,138 @@ En base a les dades ja existents, s'obté els beneficis de la pel·lícula i si 
   top250movies$Net_income <- top250movies$Collection - top250movies$Budget
 
 # Es comprova si la pel·lícula és rendible només si Collection és superior a 2 vegades Budget
-  top250movies$Profitable <- top250movies.is_profitable(minimum_criteria = 2)
+  top250movies$Profitable <- as.factor(top250movies.is_profitable(minimum_criteria = 2))
 ```
+
+# Contrast d'hipòtesi
+
+Es vol estudiar si la proporció de pel·lícules rendibles és major quan el pressupost d'aquestes és superior a la mitjana, high, al 99% de confiança.
+
+```{r, echo = FALSE}
+# S'obté la taula
+addmargins(table(top250movies$Profitable, factor(x = top250movies$Budget >= mean(top250movies$Budget),
+                                                 levels = c(FALSE, TRUE),
+                                                 labels = c('Low', 'High')),
+                 dnn = c('Profitable', 'High budget')))
+
+# Es grafica el constrast
+ggplot(data = top250movies,
+       aes(x = Budget > mean(Budget),
+           fill = Profitable,
+           by = Budget > mean(Budget))) +
+  stat_count(geom = 'bar',
+             position = 'stack') +
+  geom_text(stat = 'prop',
+            position = position_stack(vjust = 0.5)) +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank()) +
+  scale_x_discrete(labels = c('Low', 'High')) +
+  labs(title = 'Profitable movies proportion by budget',
+       x = 'Budget',
+       y = element_blank())
+```
+
+## Hipòtesi nul·la i alternativa
+
+$H_{0}: \frac{p_{1}}{p_{2}} = 1$
+
+$H_{1}: \frac{p_{1}}{p_{2}} > 1$
+
+$p_{1} :=
+\text{proporció problacional de pel·lícules rendibles amb pressupost superior o igual a la mitjana mostral}$
+
+$p_{2} :=
+\text{proporció problacional de pel·lícules rendibles amb pressupost inferior a la mitjana mostral}$
+
+## Test estadístic
+
+El test que s'empra en aquest apartat és el contrast de la proporció, o el contrast de dades categòriques, de dues mostres per a la cua superior on es compleix que, sota $H_{0}$:
+
+$$
+x^{2\space*} = \sum_{i}\sum_{j} \frac{(| O_{ij} - E_{ij} | - 0.5)^2}{E_{ij}} \sim X^{2}_{1}
+$$
+
+## Contrast
+
+```{r}
+# Es defineix la funció de filtrartge per a simplificar el procés
+  top250movies.filter <- function(column,
+                                  threshold,
+                                  operator,
+                                  show){
+    input <- top250movies[[column]]
+    value <- do.call(threshold, list(input))
+    subset <- do.call(operator, list(input, value))
+    result <- subset(x = top250movies,
+                     subset = subset,
+                     select = show,
+                     drop = TRUE)
+    return(result)
+  }
+
+# Es calculen els paràmetres
+  group_1 <- top250movies.filter(column = 'Budget',
+                                 threshold = 'mean',
+                                 operator = '>=',
+                                 show = 'Profitable')
+  group_2 <- top250movies.filter(column = 'Budget',
+                                 threshold = 'mean',
+                                 operator = '<',
+                                 show = 'Profitable')
+  
+  x_1 <- sum(as.numeric(group_1) - 1)
+  x_2 <- sum(as.numeric(group_2) - 1)
+            
+  n_1 <- length(group_1)
+  n_2 <- length(group_2)
+
+# Es calcula el test
+  test <- prop.test(x = c(x_1, x_2),
+                    n = c(n_1, n_2),
+                    alternative = 'greater',
+                    conf.level = 0.99)
+  
+# S'obté el valor estimat
+  x2 <- test$statistic[[1]]
+```
+
+```{r, echo = FALSE}
+f2 <- function(x){
+  y <- dchisq(x,
+              df = 1)
+  y[x < qchisq(p = 0.01,
+               df = 1,
+               lower.tail = FALSE)] <- NA
+  return(y)
+}
+
+ggplot(data.frame(x = c(0, 12)),
+       aes(x = x)) +
+  stat_function(fun = f2,
+                geom = 'area',
+                fill = 'red') +
+  stat_function(fun = dchisq,
+                args = list(df = 1)) +
+  geom_point(aes(x = x2,
+                 y = 0),
+             color = 'blue') +
+    geom_text(aes(x = 8,
+                  y = -0.05,
+                  color = 'red'),
+              label = '-> Rejection zone',
+              show.legend = FALSE) +
+  geom_text(aes(x = x2,
+                y = -0.05),
+            label = 'x2*') +
+  theme(axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(title = 'Chi squared test',
+       y = 'Probability',
+       x = 'x')
+```
+
+## Interpretació
+
+El resultat obtingut permet rebutjar $H_{0}$ amb $\alpha = 0.01$.
+
+S'observa en el gràfic que $x^{2\space*}$ és troba situat dins la zona de rebuig, és a dir, que és superior al valor crític en aquest cas particular i, en conseqüència, amb les dades disponibles, es demostra estadísticament que la proporció de pel·lícules rendibles és major en el conjunt de metratges que sobrepassen el pressupost promig respecte a les altres.
