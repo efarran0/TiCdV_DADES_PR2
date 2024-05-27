@@ -382,6 +382,14 @@ En base a les dades ja existents, s'obté els beneficis de la pel·lícula i si 
   top250movies$Profitable <- as.factor(top250movies.is_profitable(minimum_criteria = 2))
 ```
 
+## Exportació del conjunt de dades tractat
+
+```{r}
+# S'exporta el top250movies
+write.csv(x = top250movies,
+          file = 'dataset/top250movies_clean.csv')
+```
+
 # Contrast d'hipòtesi
 
 Es vol estudiar si la proporció de pel·lícules rendibles és major quan el pressupost d'aquestes és superior a la mitjana, high, al 99% de confiança.
