@@ -387,7 +387,8 @@ En base a les dades ja existents, s'obté els beneficis de la pel·lícula i si 
 ```{r}
 # S'exporta el top250movies
 write.csv(x = top250movies,
-          file = 'dataset/top250movies_clean.csv')
+          file = 'dataset/top250movies_clean.csv',
+          row.names = FALSE)
 ```
 
 # Contrast d'hipòtesi
