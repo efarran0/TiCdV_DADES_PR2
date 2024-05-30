@@ -79,11 +79,11 @@ options(scipen = 999)
                   x = value[1])) {
           hours <- as.numeric(str_remove_all(string = value[1],
                                              pattern = '[a-z]'))
-          }else{
+          } else {
             minutes <- as.numeric(str_remove_all(string = value[1],
                                                  pattern = '[a-z]'))
             }
-        }else{
+        } else {
           hours <- as.numeric(str_remove_all(string = value[1],
                                              pattern = '[a-z]'))
           minutes <- as.numeric(str_remove_all(string = value[2],
@@ -225,8 +225,6 @@ options(scipen = 999)
                      drop = TRUE)
     return(result)
   }
-
-
 ```
 
 # Importació dataset
