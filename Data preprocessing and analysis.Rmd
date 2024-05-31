@@ -217,6 +217,13 @@ options(scipen = 999)
 ```{r dataset import}
 # S'importa la data
   top250movies <- read.csv('top250movies.csv')
+
+# Es visualitzen els primers 3 registres de top250movies
+  head(top250movies,
+       n = 3)
+  
+# S'observa la dada per a cada atribut de top250movies
+  summary(top250movies)
 ```
 
 # Neteja
