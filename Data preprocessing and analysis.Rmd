@@ -25,7 +25,7 @@ options(scipen = 999)
 
 # Importació de llibreries
 
-```{r}
+```{r library load}
 # Es carreguen les llibreries requerides
   if (!require(stringr)) {
     install.packages('stringr')
@@ -55,7 +55,7 @@ options(scipen = 999)
 
 # Definició de funcions
 
-```{r}
+```{r function definition}
 # Eliminació de patrons
   top250movies.remove <- function(column,
                                   pattern){
@@ -210,26 +210,11 @@ options(scipen = 999)
       }
     return(p)
   }
-  
-# Filtració
-  top250movies.filter <- function(column,
-                                  threshold,
-                                  operator,
-                                  show){
-    input <- top250movies[[column]]
-    value <- do.call(threshold, list(input))
-    subset <- do.call(operator, list(input, value))
-    result <- subset(x = top250movies,
-                     subset = subset,
-                     select = show,
-                     drop = TRUE)
-    return(result)
-  }
 ```
 
 # Importació dataset
 
-```{r}
+```{r dataset import}
 # S'importa la data
   top250movies <- read.csv('top250movies.csv')
 ```
@@ -240,21 +225,21 @@ options(scipen = 999)
 
 S'ometen el títol, la classificació i  el director de la pel·lícula per considerar-se dades irrellevants en aquest estudi.
 
-```{r}
+```{r selection}
 exclude <- c('Title',
              'Classification',
              'Director')
 names <- colnames(top250movies)
 
 top250movies <- subset(x = top250movies,
-                       select = names[!(names %in% exclude)])
+                       select = -exclude)
 ```
 
 ## Eliminació de caràcters superflus
 
 S'eliminen els caràcters innecessaris en les columnes del conjunt de dades.
 
-```{r}
+```{r removement}
 # Budget
   top250movies$Budget <- top250movies.remove(column = 'Budget',
                                              pattern = '\\(estimated\\)|,|\\s')
@@ -268,7 +253,7 @@ S'eliminen els caràcters innecessaris en les columnes del conjunt de dades.
 
 S'expressen d'acord a un mateix critèri els valors dels atributs requerits.
 
-```{r}
+```{r conversion}
 # Duration
   top250movies$Duration <- top250movies.time_conversion(column = 'Duration')
 
@@ -308,7 +293,7 @@ S'expressen d'acord a un mateix critèri els valors dels atributs requerits.
 
 Es modifica la naturalesa dels atributs del conjunt de dades.
 
-```{r}
+```{r data type}
 for (column in colnames(top250movies)) {
   
   # Variables de tipus integer
@@ -332,7 +317,7 @@ for (column in colnames(top250movies)) {
 
 Es cerquen i suprimeixen els valors extrems per a les variables Budget i Collection. Totes les altres variables de caràcter numèric, com per exemple 'Rating', es considera que contenen valors legítims.
 
-```{r}
+```{r extreme values, fig.show = 'hide'}
 for (column in colnames(top250movies)) {
   if (column %in% c('Budget',
                     'Collection')) {
@@ -345,7 +330,7 @@ for (column in colnames(top250movies)) {
 
 Primerament es cerca la proporció de valors perduts per a cada característica.
 
-```{r}
+```{r data losed}
 for (column in colnames(top250movies)) {
   top250movies.na_prop(column = column)
 }
@@ -353,7 +338,7 @@ for (column in colnames(top250movies)) {
 
 S'adverteix que la proporció de valors perduts no supera en cap cas el 18%. Per tant es procedeix amb la imputació per k-NN considerant a la resta de dades disponibles. 
 
-```{r}
+```{r imputation}
 # Imputació per k-NN
   for (column in colnames(top250movies)) {
     if (anyNA(top250movies[[column]])) {
@@ -369,7 +354,7 @@ S'adverteix que la proporció de valors perduts no supera en cap cas el 18%. Per
 
 Es dicotomitza l'atribut 'Genre' i s'elimina la característica original.
 
-```{r}
+```{r dichotomic}
 # Genre
   genre_list <- unique(str_trim(unlist(strsplit(top250movies$Genre,
                                                split = ','))))
@@ -380,16 +365,15 @@ Es dicotomitza l'atribut 'Genre' i s'elimina la característica original.
                                                            pattern = genre))
   }
   
-  names <- colnames(top250movies)
   top250movies <- subset(x = top250movies,
-                         select = names[!(names %in% 'Genre')])
+                         select = -Genre)
 ```
 
 ## Generació de noves característiques
 
 En base a les dades ja existents, s'obté els beneficis de la pel·lícula i si és rendible només si 'Collection' és, almenys, 2 vegades superior a 'Budget'.
 
-```{r}
+```{r new data}
 # Beneficis per pel·lícula
   top250movies$Net_income <- top250movies$Collection - top250movies$Budget
 
@@ -399,7 +383,7 @@ En base a les dades ja existents, s'obté els beneficis de la pel·lícula i si 
 
 ## Normalització
 
-```{r}
+```{r standardization}
 # Es normalitzen els atributs numèrics
   for (column in colnames(top250movies)) {
     if ((class(top250movies[[column]]) %in% c('numeric',
@@ -416,7 +400,7 @@ En base a les dades ja existents, s'obté els beneficis de la pel·lícula i si 
 
 Posteriorment a la neteja del conjunt de dades es procedeix a visualitzar les distribucions de les característiques
 
-```{r}
+```{r visualization}
 columns <- colnames(top250movies)
 criteria <- str_detect(string = colnames(top250movies),
                                          pattern = 'norm',
@@ -426,23 +410,23 @@ gg <- lapply(X = columns[criteria],
              FUN = top250movies.plot)
 ```
 
-```{r}
+```{r display 1, echo = FALSE, fig.cap = 'Distrubició variables numèriques', fig.align = 'center'}
 do.call(what = 'grid.arrange', args = c(gg[1:6],
                                         gg[28],
                                         ncol = 2))
 ```
 
-```{r}
+```{r display 2, echo = FALSE, fig.cap = 'Distrubició variables categòriques', fig.align = 'center'}
 do.call(what = 'grid.arrange', args = c(gg[7:14],
                                         ncol = 2))
 ```
 
-```{r}
+```{r display 3, echo = FALSE, fig.cap = 'Distrubició variables categòriques', fig.align = 'center'}
 do.call(what = 'grid.arrange', args = c(gg[15:22],
                                         ncol = 2))
 ```
 
-```{r}
+```{r display 4, echo = FALSE, fig.cap = 'Distrubició variables categòriques', fig.align = 'center'}
 do.call(what = 'grid.arrange', args = c(gg[23:27],
                                         gg[29],
                                         ncol = 2))
@@ -452,7 +436,7 @@ do.call(what = 'grid.arrange', args = c(gg[23:27],
 
 Es vol estudiar si la proporció de pel·lícules rendibles és major quan el pressupost d'aquestes és superior a la mitjana, high, al 99% de confiança.
 
-```{r, echo = FALSE}
+```{r contrast, echo = FALSE, fig.cap = 'Proporció de pel·lícules rendibles per pressupost', fig.align = 'center'}
 # S'obté la taula
 addmargins(table(top250movies$Profitable, factor(x = top250movies$Budget >= mean(top250movies$Budget),
                                                  levels = c(FALSE, TRUE),
@@ -498,16 +482,16 @@ $$
 
 ## Contrast
 
-```{r}
+```{r contrast calculation}
 # Es calculen els paràmetres
-  group_1 <- top250movies.filter(column = 'Budget',
-                                 threshold = 'mean',
-                                 operator = '>=',
-                                 show = 'Profitable')
-  group_2 <- top250movies.filter(column = 'Budget',
-                                 threshold = 'mean',
-                                 operator = '<',
-                                 show = 'Profitable')
+  group_1 <- subset(x = top250movies,
+                    subset = Budget >= mean(Budget),
+                    select = Profitable,
+                    drop = TRUE)
+  group_2 <- subset(x = top250movies,
+                    subset = Budget < mean(Budget),
+                    select = Profitable,
+                    drop = TRUE)
   
   x_1 <- sum(as.numeric(group_1) - 1)
   x_2 <- sum(as.numeric(group_2) - 1)
@@ -525,7 +509,7 @@ $$
   x2 <- test$statistic[[1]]
 ```
 
-```{r, echo = FALSE}
+```{r contrast visualization, echo = FALSE, fig.cap = 'Contrast de cua superior de la distribució Chi quadrat', fig.align = 'center'}
 f2 <- function(x){
   y <- dchisq(x,
               df = 1)
@@ -566,7 +550,7 @@ S'observa en el gràfic que $x^{2\space*}$ és troba situat dins la zona de rebu
 
 # Exportació del conjunt de dades
 
-```{r}
+```{r dataset export}
 # S'exporta top250movies
 write.csv(x = top250movies,
           file = 'dataset/top250movies_clean.csv',
