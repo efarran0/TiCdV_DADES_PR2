@@ -618,6 +618,206 @@ Com hem comprovat, el conjunt de dades objecte de l'estudi, treu conclusions mol
 
 ### Model No supervisat
 
+Per a l'estudi del model no supervisat prescindint inicialment de la variable etiquetada que defineix cada classe, i que en el nostre conjunt correspont a la variable dicotòmica *Profitable* (1 - Rendible/ 0 - No rendible)
+
+Com no sabem d'inici el nombre d'agrupacions o classes naturals al que pertanyen les instàncies, farem us del mètode k-means per agrupar les observacions segons les variables independents disponibles. Per dur-ho a terme, normalitzem els atributs numèrics i avaluarem diferent nombre de clústers (k) aplicant mètriques com SSW (*Sum of Squared Within*), SSB (*Sum of Squared Between*) i el coeficient de *Silhouette*.
+
+
++ **SSW** - Homogeneïtat entre grups. Minimització de distàncies intragrup. 
++ **SSB** - Heterogeneïtat entre grups. Maximizació de distàncies intragrup.
++ **Coeficient de Silhouette** - intervals que indiquen si la mostra està al grup correcte.
+
+Sabem que el nombre correcte de k és 2 perquè treballem amb una variable dicotòmica que determina les classes. A continuació estudiem diferents possibilitats.
+
+Abans d'aplicar *K-means*, es esencial normalitzar els valors per assegurar que totes les variables contribueixen equitativament a l'anàlisi. La normalització transforma els valors per tenir una mitjana de 0 i una desviació estàndard de 1.
+
+```{r}
+if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
+if (!require('cowplot')) install.packages('cowplot'); library('cowplot')
+if (!require('ggpubr')) install.packages('ggpubr'); library('ggpubr')
+
+
+#Seleccionem les variables d'interès i normalitzem
+top250movies.all<-top250movies[,c('Profitable','Rating', 'Review', 'Budget', 'Collection')]
+top250moviesNormalitzada <- as.data.frame(scale(top250movies.all[,c('Rating', 'Review', 'Budget', 'Collection')]))
+
+top250moviesNormalitzada.cols<-dim(top250moviesNormalitzada)[2]
+top250moviesNormalitzada.rows<-dim(top250moviesNormalitzada)[1]
+
+# Mostrem les dimensiones i el nombre d'observacions
+print(paste("Nombre de columnes:", top250moviesNormalitzada.cols))
+print(paste("Nombre de files:", top250moviesNormalitzada.rows))
+
+# Comprovem la normalització
+mean_normalized <- apply(top250moviesNormalitzada, 2, mean)
+sd_normalized <- apply(top250moviesNormalitzada, 2, sd)
+print("Mitjana de les variables normalitzades:")
+print(mean_normalized)
+print("Desviacions estàndard de les variables normalitzades:")
+print(sd_normalized)
+
+
+```
+
+La normalització és correcta. Ja es pot procedir a aplicar el mètode *k-means*. Avaluem diferents nombres de clústers (k) per a determinar l'agrupació òptima:
+
+```{r}
+# Avaluem k de 1 a 10
+distance <- cluster::daisy(top250moviesNormalitzada)
+valores <- seq(from=1, to=10, by=1)
+
+# Resultats de les mètriques
+resultats_ssw <- rep(NA, length(valores))
+resultats_ssb <- rep(NA, length(valores))
+resultats_silhouette <- rep(NA, length(valores))
+
+for (k in valores[-1]) {
+  set.seed(123)
+  model <- stats::kmeans(top250moviesNormalitzada, centers=k)
+  clusters <- model$cluster
+  resultats_silhouette[k] <- summary(cluster::silhouette(
+    clusters, distance))$avg.width
+  resultats_ssw[k] <- model$tot.withinss
+  resultats_ssb[k] <- model$betweenss
+}
+
+resultats_kmeans <- data.frame(valores, resultats_silhouette,
+                             resultats_ssw, resultats_ssb) %>%
+tidyr::drop_na()
+
+resultats_kmeans
+
+```
+
+Visualització dels resultats. es generen gràfics per a visualitzar les mètriques Coeficient de Silhouette, SSW i SSB per ajudar a escollir el nombre idoni de clústers:
+
+```{r}
+# Gràfica del Coeficient de Silhouette
+plot_silhouette<-ggplot(data=resultats_kmeans, mapping = aes(x=valores, y=resultats_silhouette))+scale_x_continuous(breaks=valores, minor_breaks = NULL)+
+  geom_line(color='red', size=1)+
+  geom_vline(aes(xintercept=2), color='green', linetype='dashed', size=1, alpha=0.75)+
+  annotate('text',x=2, y=resultats_kmeans$resultats_silhouette[resultats_kmeans$valores==4], label='\n k',color='green', size=4, fontface='bold',hjust=0.0,vjust=0.75)+
+  geom_point(color='blue',size=2)+labs(title = 'Gráfica del Coeficiente de Silhouette', x='nº de clusters', y='silhoutte')
+
+# Gràfica de Sum of Squared Within (SSW)
+plot_ssw<-ggplot(data=resultats_kmeans, mapping = aes(x=valores, y=resultats_ssw))+scale_x_continuous(breaks=valores, minor_breaks = NULL)+scale_y_continuous(labels=scales::label_scientific(digits=2))+
+  geom_line(color='red', size=1)+
+  geom_vline(aes(xintercept=5), color='green', linetype='dashed', size=1, alpha=0.75)+
+  annotate('text',x=5, y=resultats_kmeans$resultats_ssw[resultats_kmeans$valores==5], label='\n k',color='green', size=4, fontface='bold',hjust=0.0,vjust=0.75)+
+  geom_point(color='blue',size=2)+labs(title = 'Gráfica de Sum of Squared Within (SSW)', x='nombre de clústers', y='SSW')
+
+# Gràfica de Sum of Squared Between (SSB)
+plot_ssb<-ggplot(data=resultats_kmeans, mapping = aes(x=valores, y=resultats_ssb))+scale_x_continuous(breaks=valores, minor_breaks = NULL)+scale_y_continuous(labels=scales::label_scientific(digits=2))+
+  geom_line(color='red', size=1)+
+  geom_vline(aes(xintercept=5), color='green', linetype='dashed', size=1, alpha=0.75)+
+  annotate('text',x=5, y=resultats_kmeans$resultats_ssb[resultats_kmeans$valores==5], label='\n k',color='green', size=4, fontface='bold',hjust=0.0,vjust=0.75)+
+  geom_point(color='blue',size=2)+labs(title = 'Gráfica de Sum of Squared Between (SSB)', x='nº de clusters', y='SSB')
+
+# Es combinen els gràfics en una figura annotada
+annotate_figure(
+  top = text_grob('k-means | Elecció del paràmetre k', face='bold', size=16),
+  ggarrange(plot_silhouette, plot_ssw, plot_ssb, labels=c('A', 'B', 'C'), align='hv', nrow=3, ncol=1)
+)
+
+```
+
+
+A. *Coeficient de Silhouette*: la gràfica mostra com s'ajusta cada punt al clúster assignat. Els valors oscilen entre -1 i 1, on un valor alt indica que els punts estàn ajustats al seu propi grup i lluny dels veins. Hi ha un  pic més pronunciat per a k=2 el que apunta que l'agrupació de 2 classes te un ajustament més adequat en comparació amb els altres valors de k.
+
+
+B. *SSW*: la gràfica mesura les distàncies al quadrat de cada punt en un clúster al centroide del grup, indicador de la cohesió del clúster. Un valor menor indica que els punts estan més a prop del centroide, fet desitjable. D'acord amb el gràfic, el *SSW* disminueix significativament fins a k=5, i a partir d'aquí, els canvis son menys pronunciats, i no redueix substancialment la variació dins els clústers. 
+
+C. *SSB*: la gràfica mesura la suma de les distàncies al quadrat entre els centroides dels clústers i el centroide global de tots els punts, reflectint la separació entre clústers. Un valor alt indica que els clústers estan més dispersos, i per tant millor definits. Al gràfic s'observa un agument a cada increment de k, però igual que passa amb el *SSW*, el canvi és menys pronunciat després de k=5. Això suggereix que a més clústers afegim, la millora no es tan evident després d'arribar als 5 clústers.
+
+Sorprent els resultats de *SSW* i *SSB*, degut a que el nombre esperat de clústers és 3. Per entendre millor aquests resultats, visualitzem a continuació les agrupacions per a k=2 i K=5 en les diverses combinacions de variables disponibles.
+
+Primer, creem els models *k-means*  per cada valor de k desitjat:
+
+
+```{r}
+# Creem modelo K-means per a k=2 i k=5
+set.seed(123)
+k2_model <- kmeans(top250moviesNormalitzada, centers=2)
+k5_model <- kmeans(top250moviesNormalitzada, centers=5)
+
+```
+
+definim la funció per a crear els gràfics de dispersió:
+
+```{r}
+
+create_kmeans_plot <- function(data, k_model, var1, var2, profitable) {
+  ggplot(data, aes(x = .data[[var1]], y = .data[[var2]], 
+                   color = factor(k_model$cluster), shape = profitable)) +
+    geom_point() +
+    labs(title = paste(var1, "vs", var2),
+         x = var1, y = var2, color = "Cluster", shape = "Profitable") +
+    theme_minimal() +
+    theme(text = element_text(size = 7),          
+          axis.title = element_text(size = 8),    
+          axis.text = element_text(size = 7),      
+          legend.title = element_text(size = 7),   
+          legend.text = element_text(size = 7),    
+          legend.position = "bottom")              
+}
+
+combine_plots_with_shared_legend <- function(plots_list, num_columns = 3) {
+  # Assumim que tots els gràfics de la llista tenen llegenda, i l'extraiem
+  legend_plot <- cowplot::get_legend(plots_list[[1]])
+  
+  # Combinació dels gràfics sense llegenda
+  combined_plots <- cowplot::plot_grid(plotlist = lapply(plots_list, function(p) {
+    p + theme(legend.position = "none")
+  }), labels = NULL, ncol = num_columns)
+  
+  # Afegim la llegenda al final dels gràfics combinats
+  final_plot <- cowplot::plot_grid(combined_plots, legend_plot, ncol = 1, 
+                                   rel_heights = c(10, 1))
+  
+  # retornem el gràfic final amb la llegenda
+  return(final_plot)
+}
+```
+
+
+A continuació, utilitzem la funció per a crear els gràfics per a les diferents relacions de parells de variables per a k02 i k=5:
+
+```{r}
+if (!require('gridExtra')) install.packages('gridExtra'); library('gridExtra')
+
+# Llista de totesles combinacions de parells de variables:
+variable_pairs <- combn(c('Rating', 'Review', 'Budget', 'Collection'), 2, simplify = FALSE)
+
+# Llistes per a guardar els gràfics:
+plots_k2 <- list()
+plots_k5 <- list()
+
+for(i in seq_along(variable_pairs)) {
+  var1 <- variable_pairs[[i]][1]
+  var2 <- variable_pairs[[i]][2]
+
+  # Guardem els gràfics a les seves respectives llistes
+  plots_k2[[i]] <- create_kmeans_plot(top250movies.all, k2_model, var1, var2, top250movies.all$Profitable)
+  plots_k5[[i]] <- create_kmeans_plot(top250movies.all, k5_model, var1, var2, top250movies.all$Profitable)
+}
+
+# Exemple d'us de la funció amb plots_k2 i plots_k5
+final_plot_k2 <- combine_plots_with_shared_legend(plots_k2)
+final_plot_k5 <- combine_plots_with_shared_legend(plots_k5)
+
+# Visualitsem els gràfics finals
+print(final_plot_k2)
+```
+
+```{r}
+print(final_plot_k5)
+```
+
+
+Com s'observa, el nombre de clústers més adient es per a k=2. Per a k=5 hi ha classes que queden superposades. L'elecció de k=2 s'alinea amb la recomanació del coeficient de *Silhouette* que es tracta d'un indicador robust de la qualitat de l'agrupament, i encara que hi ha disminucions marginals per a *SSW* i augments marginals per a SSB després de k=2, aquests no justifiquen l'elecció d'un major nombre de clústers.
+
+
+
 ## Aplica una prova per contrast d'hipòtesi. 
 *Tingues en compte que algunes d'aquestes proves requereixen verificar prèviament la normalitat i homocedasticitat de les dades.*
 
