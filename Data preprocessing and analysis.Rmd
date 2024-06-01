@@ -230,16 +230,17 @@ options(scipen = 999)
 
 ## Selecció de característiques
 
-S'ometen el títol, la classificació i  el director de la pel·lícula per considerar-se dades irrellevants en aquest estudi.
+S'ometen el títol, la classificació i  el director de la pel·lícula per considerar-se dades irrellevants en aquest estudi. Tot i no emprar-se directament l'any, la característica serà d'utilitat posteriorment per a imputar valors perduts en el conjunt de dades.
 
 ```{r selection}
+names <- colnames(top250movies)
 exclude <- c('Title',
              'Classification',
              'Director')
-names <- colnames(top250movies)
+selection <- names[!(names %in% exclude)]
 
 top250movies <- subset(x = top250movies,
-                       select = -exclude)
+                       select = selection)
 ```
 
 ## Eliminació de caràcters superflus
@@ -325,12 +326,14 @@ for (column in colnames(top250movies)) {
 Es cerquen i suprimeixen els valors extrems per a les variables Budget i Collection. Totes les altres variables de caràcter numèric, com per exemple 'Rating', es considera que contenen valors legítims.
 
 ```{r extreme values, fig.show = 'hide'}
-for (column in colnames(top250movies)) {
-  if (column %in% c('Budget',
-                    'Collection')) {
-    outlier <- boxplot(top250movies[[column]])$out
-    top250movies[[column]][top250movies[[column]] %in% outlier] <- NA}
-  }
+# Valors extrems
+  for (column in colnames(top250movies)) {
+    if (column %in% c('Budget',
+                      'Collection')) {
+      outlier <- boxplot(top250movies[[column]])$out
+      top250movies[[column]][top250movies[[column]] %in% outlier] <- NA
+      }
+    }
 ```
 
 ## Imputació
@@ -338,9 +341,10 @@ for (column in colnames(top250movies)) {
 Primerament es cerca la proporció de valors perduts per a cada característica.
 
 ```{r data losed}
-for (column in colnames(top250movies)) {
-  top250movies.na_prop(column = column)
-}
+# Proporció de dades perdudes
+  for (column in colnames(top250movies)) {
+    top250movies.na_prop(column = column)
+  }
 ```
 
 S'adverteix que la proporció de valors perduts no supera en cap cas el 18%. Per tant es procedeix amb la imputació per k-NN considerant a la resta de dades disponibles. 
@@ -408,13 +412,14 @@ En base a les dades ja existents, s'obté els beneficis de la pel·lícula i si 
 Posteriorment a la neteja del conjunt de dades es procedeix a visualitzar les distribucions de les característiques
 
 ```{r visualization}
-columns <- colnames(top250movies)
-criteria <- str_detect(string = colnames(top250movies),
-                                         pattern = 'norm',
-                                         negate = TRUE)
-
-gg <- lapply(X = columns[criteria],
-             FUN = top250movies.plot)
+# Visualització
+  columns <- colnames(top250movies)
+  criteria <- str_detect(string = colnames(top250movies),
+                                           pattern = 'norm',
+                                           negate = TRUE)
+  
+  gg <- lapply(X = columns[criteria],
+               FUN = top250movies.plot)
 ```
 
 ```{r display 1, echo = FALSE, fig.cap = 'Distrubició variables numèriques', fig.align = 'center'}
@@ -445,26 +450,26 @@ Es vol estudiar si la proporció de pel·lícules rendibles és major quan el pr
 
 ```{r contrast, echo = FALSE, fig.cap = 'Proporció de pel·lícules rendibles per pressupost', fig.align = 'center'}
 # S'obté la taula
-addmargins(table(top250movies$Profitable, factor(x = top250movies$Budget >= mean(top250movies$Budget),
-                                                 levels = c(FALSE, TRUE),
-                                                 labels = c('Low', 'High')),
-                 dnn = c('Profitable', 'Budget')))
+  addmargins(table(top250movies$Profitable, factor(x = top250movies$Budget >= mean(top250movies$Budget),
+                                                   levels = c(FALSE, TRUE),
+                                                   labels = c('Low', 'High')),
+                   dnn = c('Profitable', 'Budget')))
 
 # Es grafica el constrast
-ggplot(data = top250movies,
-       aes(x = Budget > mean(Budget),
-           fill = Profitable,
-           by = Budget > mean(Budget))) +
-  stat_count(geom = 'bar',
-             position = 'stack') +
-  geom_text(stat = 'prop',
-            position = position_stack(vjust = 0.5)) +
-  theme(axis.ticks.y = element_blank(),
-        axis.text.y = element_blank()) +
-  scale_x_discrete(labels = c('Low', 'High')) +
-  labs(title = 'Profitable movies proportion by budget',
-       x = 'Budget',
-       y = element_blank())
+  ggplot(data = top250movies,
+         aes(x = Budget > mean(Budget),
+             fill = Profitable,
+             by = Budget > mean(Budget))) +
+    stat_count(geom = 'bar',
+               position = 'stack') +
+    geom_text(stat = 'prop',
+              position = position_stack(vjust = 0.5)) +
+    theme(axis.ticks.y = element_blank(),
+          axis.text.y = element_blank()) +
+    scale_x_discrete(labels = c('Low', 'High')) +
+    labs(title = 'Profitable movies proportion by budget',
+         x = 'Budget',
+         y = element_blank())
 ```
 
 ## Hipòtesi nul·la i alternativa
@@ -559,7 +564,7 @@ S'observa en el gràfic que $x^{2\space*}$ és troba situat dins la zona de rebu
 
 ```{r dataset export}
 # S'exporta top250movies
-write.csv(x = top250movies,
-          file = 'dataset/top250movies_clean.csv',
-          row.names = FALSE)
+  write.csv(x = top250movies,
+            file = 'dataset/top250movies_clean.csv',
+            row.names = FALSE)
 ```
