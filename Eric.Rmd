@@ -7,6 +7,7 @@ output:
     toc: yes
     number_sections: yes
     toc_depth: 3
+    latex_engine: xelatex
 header-includes:
   \usepackage{dcolumn}
 lang: ca
@@ -417,43 +418,6 @@ En base a les dades ja existents, s'obté els beneficis de la pel·lícula i si 
                           sep = '')]] <- top250movies.scale(column = column)
     }
   }
-```
-
-# Visualització
-
-Posteriorment a la neteja del conjunt de dades es procedeix a visualitzar les distribucions de les característiques
-
-```{r visualization}
-# Visualització
-  columns <- colnames(top250movies)
-  criteria <- str_detect(string = colnames(top250movies),
-                                           pattern = 'norm',
-                                           negate = TRUE)
-  
-  gg <- lapply(X = columns[criteria],
-               FUN = top250movies.plot)
-```
-
-```{r display 1, echo = FALSE, fig.cap = 'Distrubició variables numèriques', fig.align = 'center'}
-do.call(what = 'grid.arrange', args = c(gg[1:6],
-                                        gg[28],
-                                        ncol = 2))
-```
-
-```{r display 2, echo = FALSE, fig.cap = 'Distrubició variables categòriques', fig.align = 'center'}
-do.call(what = 'grid.arrange', args = c(gg[7:14],
-                                        ncol = 2))
-```
-
-```{r display 3, echo = FALSE, fig.cap = 'Distrubició variables categòriques', fig.align = 'center'}
-do.call(what = 'grid.arrange', args = c(gg[15:22],
-                                        ncol = 2))
-```
-
-```{r display 4, echo = FALSE, fig.cap = 'Distrubició variables categòriques', fig.align = 'center'}
-do.call(what = 'grid.arrange', args = c(gg[23:27],
-                                        gg[29],
-                                        ncol = 2))
 ```
 
 # Contrast d'hipòtesi
