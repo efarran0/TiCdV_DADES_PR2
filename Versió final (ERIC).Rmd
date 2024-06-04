@@ -68,9 +68,27 @@ Breu descripció dels atributs:
 + **Budget**: Pressupost en moneda local
 + **Collection**: Ingressos de taquillatge totals
 
+# Integració i selecció de les dades d’interès
+
+Atès que només hi ha disponible una font de dades, per aquest projecte no cal la integració de diferents datasets però, respecte la selecció de característiques de les pel·lícules, s'exlouen el títol, la classificació i  el director de la pel·lícula per considerar-se dades irrellevants en aquest estudi. A més a més, cada títol, i gairebé cada director, és únic al conjunt de dades, fet que comporta que no aportin valor afegit a l'anàlisi. 
+
+```{r selection}
+# Es selecciona el dataset
+  names <- colnames(top250movies)
+  exclude <- c('Title',
+               'Classification',
+               'Director')
+  selection <- names[!(names %in% exclude)]
+  
+  top250movies <- subset(x = top250movies,
+                         select = selection)
+```
+
+# Neteja de les dades
+
 ## Definició de funcions
 
-Tot seguit es defineixen les funcions que s'empraran al llarg de l'estudi.
+Es defineixen les funcions que s'empraran en la neteja i visualització de les dades.
 
 ```{r function definition}
 # Eliminació de patrons
@@ -264,26 +282,6 @@ Tot seguit es defineixen les funcions que s'empraran al llarg de l'estudi.
   }
 ```
 
-# Integració i selecció de les dades d’interès a analitzar
-
-Atès que només hi ha disponible una font de dades, per aquest projecte no cal la integració de diferents datasets però, respecte la selecció de característiques de les pel·lícules, s'exlouen el títol, la classificació i  el director de la pel·lícula per considerar-se dades irrellevants en aquest estudi. A més a més, cada títol, i gairebé cada director, és únic al conjunt de dades, fet que comporta que no aportin valor afegit a l'anàlisi. 
-
-```{r selection}
-# Es selecciona el dataset
-  names <- colnames(top250movies)
-  exclude <- c('Title',
-               'Classification',
-               'Director')
-  selection <- names[!(names %in% exclude)]
-  
-  top250movies <- subset(x = top250movies,
-                         select = selection)
-```
-
-# Neteja de les dades
-
-
-
 Comencem amb el procés purament de neteja del conjunt de dades. Hem decidit alterar l'ordre de l'enunciat perquè el mètode d'imputació és preferible implementar-lo una vegada les dades són correctes.
 
 ## Eliminació de caràcters superflus
@@ -460,7 +458,7 @@ Presentem una instantànea del resultat final del dataset:
 
 \newpage
 
-# Anàlisi de les dades.
+# Modelització i anàlisi
 
 ## Model supervisat
 
@@ -523,7 +521,7 @@ De manera dinàmica, separem les dades en funció del paràmetre *split_prop* am
 
 Per a crear l'arbre de decisió, fem ús de la funció C5.0 de la llibreria C50. Els paràmetres que necessita la funció són la matriu de camps predictors (el conjunt d’entrenament X) i el camp classificador (conjunt d’entrenament y):
 
-```{r, out.width = '80%'}
+```{r, out.width = '75%', fig.cap = 'Arbre de decisió', fig.align = 'center'}
 # Es genera el model
   model <- C50::C5.0(x = trainX,
                      y = trainy)
@@ -600,7 +598,7 @@ Sabem que el nombre correcte de k és 2 perquè treballem amb una variable dicot
 
 Generem gràfics per a visualitzar les mètriques del *Coeficient de Silhouette*, *SSW* i *SSB* per ajudar a escollir el nombre idoni de clústers:
 
-```{r, echo = FALSE, out.width = '80%'}
+```{r, echo = FALSE, out.width = '75%', fig.cap = 'Mètriques k-mean', fig.align = 'center'}
 # Gràfica del Coeficient de Silhouette
   plot_silhouette <-
   ggplot(data = resultats_kmeans,
@@ -716,7 +714,7 @@ Sorprent els resultats de *SSW* i *SSB*, degut a que el nombre esperat de clúst
 
 Primer, creem els models *k-means*  per cada valor de k desitjat, i a continuació, utilitzem la funció per a crear els gràfics per a les diferents relacions de parells de variables per a k=2 i k=5:
 
-```{r, echo = FALSE, out.width = '80%'}
+```{r, echo = FALSE, out.width = '75%', fig.align = 'center'}
 # Creem model K-means per a k=2 i k=5
   set.seed(123)
   k2_model <- kmeans(top250moviesNormalitzada, centers=2)
@@ -766,13 +764,11 @@ Primer, creem els models *k-means*  per cada valor de k desitjat, i a continuaci
 
 Com s'observa, el nombre de clústers més adient ésk=2. Per a k=5 hi ha classes que queden superposades. L'elecció de k=2 s'alinea amb la recomanació del coeficient de *Silhouette* que es tracta d'un indicador robust de la qualitat de l'agrupament, i encara que hi ha disminucions marginals per a *SSW* i augments marginals per a SSB després de k=2, aquests no justifiquen l'elecció d'un major nombre de clústers.
 
-\newpage
-
-# Contrast d'hipòtesi
+## Contrast d'hipòtesi
 
 Es vol estudiar si la proporció de pel·lícules rendibles és major quan el pressupost d'aquestes és superior a la mitjana, *high*, al 99% de confiança.
 
-```{r contrast, echo = FALSE, fig.cap = 'Proporció de pel·lícules rendibles per pressupost', fig.align = 'center', out.width = '80%'}
+```{r contrast, echo = FALSE, fig.cap = 'Proporció de pel·lícules rendibles per pressupost', fig.align = 'center', out.width = '75%'}
 # Es grafica el constrast
   ggplot(data = top250movies,
          aes(x = Budget > mean(Budget),
@@ -839,7 +835,7 @@ $$
   x2 <- test$statistic[[1]]
 ```
 
-```{r contrast visualization, echo = FALSE, fig.cap = 'Contrast de cua superior de la distribució Chi quadrat', fig.align = 'center', out.width = '80%'}
+```{r contrast visualization, echo = FALSE, fig.cap = 'Contrast de cua superior de la distribució Chi quadrat', fig.align = 'center', out.width = '75%'}
 
 f2 <- function(x){
   y <- dchisq(x,
