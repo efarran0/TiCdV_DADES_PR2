@@ -175,48 +175,6 @@ En aquest projecte analític, essencialment, es vol estudiar quina relació guar
     result <- as.numeric(value)
     return(result)
   }
-  
-# Normalització
-  top250movies.scale <- function(column){
-    input <- top250movies[[column]]
-    result <- (input - mean(input))/sd(input)
-    return(result)
-  }
-  
-# Visualització
-  top250movies.plot <- function(column){
-    if ((class(top250movies[[column]]) != 'factor') &
-        (str_detect(string = column,
-                    pattern = 'norm',
-                    negate = TRUE))) {
-      p <-
-        ggplot(data = NULL,
-               aes(y = top250movies[[column]])) +
-        stat_boxplot(geom = 'errorbar',
-                     width = 0.15) +
-        stat_boxplot() +
-        theme(axis.ticks.x = element_blank(),
-              axis.text.x = element_blank()) +
-        labs(y = column)
-    }
-    
-    if (class(top250movies[[column]]) == 'factor') {
-      p <- 
-        ggplot(data = NULL,
-               aes(x = top250movies[[column]])) +
-        stat_count(geom = 'bar',
-                   position = 'stack',
-                   fill = 'white',
-                   color = 'black') +
-        geom_text(stat = 'prop',
-                  position = position_stack(vjust = 0.5)) +
-        theme(axis.ticks.y = element_blank(),
-              axis.text.y = element_blank()) +
-        labs(x = column,
-             y = element_blank())
-      }
-    return(p)
-  }
 ```
 
 # Importació i descripció del dataset
@@ -415,7 +373,7 @@ En base a les dades ja existents, s'obté els beneficis de la pel·lícula i si 
         (column != 'Year')) {
       top250movies[[paste(column,
                           '_z-score',
-                          sep = '')]] <- top250movies.scale(column = column)
+                          sep = '')]] <- scale(top250movies[[column]])
     }
   }
 ```
