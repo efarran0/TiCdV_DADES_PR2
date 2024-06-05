@@ -1,0 +1,103 @@
+---
+title: 'M2.951 Tipologia i cicle de vida de les dades: PRA2'
+author: "Autor: Eric Farran- Jordi Alvarez"
+date: "2024.1"
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 2
+    includes:
+      in_header: header.html
+  word_document: default
+  pdf_document:
+    highlight: zenburn
+    toc: yes
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+options(scipen = 999)
+```
+
+
+
+******
+# Representació dels resultats a partir de taules i gràfiques.
+******
+
+Les gràfiques del conjunt de dades, es presenten al llarg dels apartats. En aquesta secció, mostrem una taula resum que ens ajudi a tenir una visió general i tècnica dels resultats de l’estudi:
+
+
+<style type="text/css">
+.tg  {border-collapse:collapse;border-spacing:0;}
+.tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+  overflow:hidden;padding:10px 5px;word-break:normal;}
+.tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+  font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
+.tg .tg-0lax{text-align:left;vertical-align:top}
+</style>
+<table class="tg">
+<thead>
+  <tr>
+    <td class="tg-0lax">**Apartat**</td>
+    <td class="tg-0lax">**Resultat (valor observat, crític, valor p...)** </td>
+    <td class="tg-0lax">**Conclusió/ Valoració**</td>
+  </tr>
+  <tr>
+    <td class="tg-0lax">1. Descripció del dataset</td>
+    <td class="tg-0lax">250 observacions i 10 característiques variades</td>
+    <td class="tg-0lax">Disposem d'un conjunt de dades ben estructurades d'un ranking de valoracions de les top 250 pel·lícules que preten donar resposta a la pregunta de si les valoracions, pressupostos, i altres característiques determinen el grau de rendibilitat que genera</td>
+  </tr>
+  <tr>
+    <td class="tg-0lax">2. Selecció de dades </td>
+    <td class="tg-0lax">Eliminació de Title, Classification, Director</td>
+    <td class="tg-0lax">Es decideix prescindir d'aquestes característiques perquè l'estudi es vol fer de forma agragada, i aquestes variables presenten gairebé resultats diferents per a cada instància.</td>
+  </tr>
+  <tr>
+    <td class="tg-0lax">3. Neteja de les dades</td>
+    <td class="tg-0lax">Missing Values: Budget: 16% /Collection: 17.6%<br> Profitable = Si( Collection - Budget*2> 0 , 1, 0)</td>
+    <td class="tg-0lax">A part de depurar text, S'imputen pel mètode de veïnatge *kNN* valors perduts i extrems per a a totes les variables, especialment  Budget i Collection per l'alt volum en comparació a la resta. Addicionalment, es transformen tipus de dades, s'unifica el tipus de moneda i es normalitzen variables numèriques. Finalment, es crea la variable de classe Profitable que mostra 1 si la recaudació de la pel·lícula dobla com a mínim el pressupost</td>
+  </tr>
+  <tr>
+    <td class="tg-0lax">4.1.1 Model supervisat - Arbre de decisió</td>
+    <td class="tg-0lax">Rule 1: Year <= 1975;  Review <= 188000;  class 0  92%<br>Rule 2: Year > 1975;  class 1  87%<br>Rule 3: Review > 188000; class 1  85%</td>
+    <td class="tg-0lax">Taxa d'error del 13.9%. El model classifica bé la majoria d'instàncies, i atès que es defineixen regles flexibles, també és capaç de classificar noves instàncies. Ressalta veure com a les pel·lícules produïdes abans del 1976, la rendibilitat no era una prioritat, o no tenien expertesa per a trobar ingressos considerats</td>
+  </tr>
+  <tr>
+    <td class="tg-0lax">4.1.2 Model No Supervisat - *k-means*</td>
+    <td class="tg-0lax">k=2</td>
+    <td class="tg-0lax">Utilitzant Coeficient de *Silhouette* es confirma que la relació de parells de variables mostren dues classes diferenciades </td>
+  </tr>
+  <tr>
+    <td class="tg-0lax">4.2 Prova per contrast d'hipòtesi.</td>
+    <td class="tg-0lax">H_0:p1/p2=1 <br> H_>_1:p1/p2>1<br>H_0 amb α=0.01</td>
+    <td class="tg-0lax">Es demostra estadísticament, que la proporció de pel·lícules rendibles és major en el conjunt de metratges que sobrepassen el pressupost promig respecte als altres.</td>
+  </tr>
+</thead>
+</table>
+
+
+
+******
+# Resolució del problema.
+******
+
+Després de treballar i analitzar el conjunt de dades referents a les 250 més ben valorades pels usuaris d'IMDb, es conclou que una pel·licula és profitosa depenent d'altres característiques independents com l'any (year) o les ressenyes (Reviews) i, addicionalment,  determina la valoració (Rating).
+
+Hem cregut molt convenient crear durant l'estudi, una variable objectiu dicotòmica per determinar si una pel·lícula és rendible o no.  Considerem que una pel·lícula és profitosa quan s'obtenen ingressos (Collection) que doblin el pressupost (Budget)
+
+Per respondre a la pregunta inicial *"quina relació guarda la rendibilitat de les pel·lícules amb les altres característiques?"*, presentem les següents conclusions derivades de l'estudi:
+
++ Les ressenyes (Reviews) que no superen les 188.000 no son rendibles si es tracta de pel·licules anteriors al 1976. En canvi, són profitoses les pel·licules posteriors al 1975. Possiblement, i d'aquí bé l'expressió del cinema com a 7è art, inicialment no es buscava la recaudació com una prioritat essencial alhora de produir una pel·lícula.
+
++ Les ressenyes superiors a les 188.000 són significativament profitoses en un 85% de les observacions. Hi ha un impacte evident entre les projeccions rendibles amb el nombre de ressenyes dels usuaris.
+
++ Finalment, en un contrast d'hipòtesi, es demostra estadísticament, que la proporció de pel·lícules rendibles és major en el conjunt de metratges que sobrepassen el pressupost promig respecte als altres.
+
+
