@@ -7,7 +7,7 @@ Assignatura: M2.851 / Semestre: 2024-2 / Data: 07-06-2024
   * Jordi Alvarez Pitarque - [jalvarezpit@uoc.edu](jalvarezpit@uoc.edu)
 
 ## Descripció del repositori
-  * `/source/main.py`: Arxiu principal.
-  * `/source/scraper.py`: Arxiu executor.
+  * `Memòria.Rmd`: Codi.
+  * `Memòria.pdf`: Informe.
   * `/dataset/top250movies.csv`: Dataset brut.
   * `/dataset/top250movies_clean.csv`: Dataset net.
