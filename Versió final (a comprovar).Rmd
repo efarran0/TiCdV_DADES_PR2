@@ -309,7 +309,7 @@ S'expressen d'acord a un mateix critèri els valors dels atributs requerits.
   top250movies$Review <- top250movies.units_conversion(column = 'Review')
   
 # Budget
-  # Es defineix la política de conversió
+  # Es defineix la política de conversió a dolar
   Monetary_policy <- data.frame('Local' = c('R$',
                                             'FRF',
                                             'DKK',
