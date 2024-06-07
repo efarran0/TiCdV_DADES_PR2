@@ -9,5 +9,5 @@ Assignatura: M2.851 / Semestre: 2024-2 / Data: 07-06-2024
 ## Descripció del repositori
   * `/pdf/Memòria.Rmd`: Codi.
   * `/pdf/Memòria.pdf`: Informe.
-  * `/dataset/top250movies.csv`: Dataset brut.
+  * `/dataset/top250movies.csv`: Dataset en brut.
   * `/dataset/top250movies_clean.csv`: Dataset net.
