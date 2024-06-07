@@ -455,7 +455,7 @@ En base a les dades ja existents, s'obté els beneficis de la pel·lícula i si 
 
 ## Visualització i exportació del conjunt de dades tractat
 
-Es presenta una instantànea del resultat final del procés de neteja i s'exporta. 
+Es presenta una instantànea del resultat final del procés de neteja i s'exporta el dataset. 
 
 ```{r export}
 # S'observa el resultat final
@@ -478,9 +478,8 @@ S'escull un mètode de classificació per al model supervisat. En concret s'impl
 
 ### Generació dels conjunts d'entrenament i test
 
-Per a realitzar el model s'exclouen els camps 'Collection' i 'Budget' per estar funcionalment lligats amb la variable objectiu 'Profitable'.
-
-Es registra l'extració en un nou dataset i, a continuació, es presenta un resum del subconjunt de dades:
+Per a realitzar el model s'exclouen els camps 'Collection' i 'Budget' per estar funcionalment lligats amb la variable objectiu 'Profitable'. A més a més, s'ignoren 'Duration', 'Net_income'
+i les característiques normalitzades.
 
 ```{r}
 # Es selecionen les característiques d'interès
@@ -499,8 +498,6 @@ Es registra l'extració en un nou dataset i, a continuació, es presenta un resu
   
   top250movies_id3b <- subset(x = top250movies,
                               select = selection)
-
-
 ```
 
 Per validar l’arbre de decisió, és necessari dividir el conjunt de dades en un conjunt d’entrenament i un conjunt de test. El conjunt d’entrenament serà utilitzat per a construir i afinar el model, mentre que el conjunt de test servirà per avaluar la seva precisió.
@@ -515,7 +512,7 @@ Per validar l’arbre de decisió, és necessari dividir el conjunt de dades en 
               select = -Profitable)
 ```
 
-De manera dinàmica, separem les dades en funció del paràmetre *split_prop* amb un valor de 3:
+De manera dinàmica, separem les dades en funció del paràmetre *split_prop*.
 
 ```{r}
 # Es genera el conjunt d'entrenament i test
@@ -531,7 +528,7 @@ De manera dinàmica, separem les dades en funció del paràmetre *split_prop* am
 
 ### Modelització i visualització
 
-Per a crear l'arbre de decisió, es fa ús de la funció C5.0 de la llibreria C50. Els paràmetres que requereix la funció són: la matriu de camps predictius (el conjunt d’entrenament X) i el camp classificador (el conjunt d’entrenament y):
+Per a crear l'arbre de decisió, es fa ús de la funció C5.0 de la llibreria C50. Els paràmetres que requereix la funció són: la matriu de camps predictius (el conjunt d’entrenament X) i el camp classificador (el conjunt d’entrenament y).
 
 ```{r, out.width = '75%', fig.cap = 'Arbre de decisió', fig.align = 'center'}
 # Es genera el model
@@ -602,7 +599,6 @@ Es sap que el nombre correcte de k és 2 perquè es treballa amb una variable di
                                  resultats_silhouette,
                                  resultats_ssw,
                                  resultats_ssb) %>% tidyr::drop_na()
-
 ```
 
 ### Visualització
@@ -899,7 +895,7 @@ ggplot(data.frame(x = c(2, 12)),
 
 El resultat obtingut permet rebutjar $H_{0}$ amb $\alpha = 0.01$.
 
-S'observa en el gràfic que $x^{2\space*}$ és troba situat dins la zona de rebuig, és a dir, que és superior al valor crític en aquest cas particular i, en conseqüència, amb les dades disponibles, es demostra estadísticament que la proporció de pel·lícules rendibles és major en el conjunt de metratges que sobrepassen el pressupost promig respecte als altres.
+S'observa en el gràfic que $x^{2\space*}$ és troba situat dins la zona de rebuig, és a dir, que és superior al valor crític en aquest cas particular i, en conseqüència, amb les dades disponibles, **es demostra estadísticament que la proporció de pel·lícules rendibles és major en el conjunt de metratges que sobrepassen el pressupost promig** respecte als altres.
 
 # Resolució del problema.
 
